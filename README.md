@@ -8,7 +8,7 @@
 ## Installation
 
 ```bash
-composer require easyai/laravel-ai
+composer require muradbdinfo/laravelai
 ```
 
 Publish the config:
