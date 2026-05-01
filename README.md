@@ -2,8 +2,10 @@
 
 **One interface, any AI.** Unified AI chat for Laravel — Ollama, OpenAI (ChatGPT), Anthropic (Claude), DeepSeek.
 
-[![Latest Version](https://img.shields.io/packagist/v/easyai/laravel-ai.svg)](https://packagist.org/packages/easyai/laravel-ai)
-[![License](https://img.shields.io/packagist/l/easyai/laravel-ai.svg)](https://packagist.org/packages/easyai/laravel-ai)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/muradbdinfo/laravelai.svg?style=flat-square)](https://packagist.org/packages/muradbdinfo/laravelai)
+[![Total Downloads](https://img.shields.io/packagist/dt/muradbdinfo/laravelai.svg?style=flat-square)](https://packagist.org/packages/muradbdinfo/laravelai)
+[![License](https://img.shields.io/packagist/l/muradbdinfo/laravelai.svg?style=flat-square)](https://packagist.org/packages/muradbdinfo/laravelai)
+[![PHP Version](https://img.shields.io/packagist/php-v/muradbdinfo/laravelai.svg?style=flat-square)](https://packagist.org/packages/muradbdinfo/laravelai)
 
 ## Installation
 
@@ -16,6 +18,12 @@ Publish the config:
 ```bash
 php artisan vendor:publish --tag=ai-config
 ```
+
+## Supported
+
+- **Providers:** Ollama, OpenAI, Anthropic (Claude), DeepSeek
+- **Laravel:** 10, 11, 12, 13
+- **PHP:** 8.1+
 
 ## Quick Start
 
@@ -142,20 +150,24 @@ $response->getRaw();              // array (raw API response)
 $response->toArray();             // array
 ```
 
-## Requirements
-
-- PHP 8.1+
-- Laravel 10, 11, or 12
-
 ## Testing
 
 ```bash
-composer test
+vendor/bin/phpunit
 ```
+
+## Support & Donations
+
+If this package helps you, consider supporting its development:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?style=flat-square&logo=buy-me-a-coffee)](https://buymeacoffee.com/muradbdinfo)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-support-pink?style=flat-square&logo=github)](https://github.com/sponsors/muradbdinfo)
 
 ## Credits
 
 - [Md Murad Hosen](https://www.easyit.com.bd)
+- [YouTube](https://youtube.com/@easybdit)
+- [Facebook](https://facebook.com/muradhosenofficial)
 
 ## License
 
