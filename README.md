@@ -37,6 +37,33 @@
   <a href="https://chat.whatsapp.com/E3VV0K6lkrqEgXdngrt2Rk">💬 WhatsApp Group</a>
 </p>
 
+## 📺 Video Tutorials
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://youtu.be/m_HyTIBRAOE">
+        <img src="https://img.youtube.com/vi/m_HyTIBRAOE/maxresdefault.jpg" 
+             alt="How to make self hosted AI Server" width="100%">
+        <br><br>
+        <strong>🖥️ How to Make Self-Hosted AI Server</strong>
+      </a>
+      <br>
+      <sub>Step-by-step guide to setting up your own local AI server with Ollama</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://youtu.be/pSwewtXqgP8">
+        <img src="https://img.youtube.com/vi/pSwewtXqgP8/maxresdefault.jpg" 
+             alt="Laravel AI Package Implement" width="100%">
+        <br><br>
+        <strong>🚀 Laravel AI Package Implementation</strong>
+      </a>
+      <br>
+      <sub>How to install and use LaravelAI package in your Laravel project</sub>
+    </td>
+  </tr>
+</table>
+
 ---
 
 ## Why LaravelAI?
