@@ -82,7 +82,7 @@ AI_OLLAMA_MODEL=qwen2:1.5b
 ### Requirements
 
 | Requirement | Version |
-|------------|---------|
+|-------------|---------|
 | PHP | 8.2+ |
 | Laravel | 10, 11, 12, 13 |
 
@@ -250,16 +250,12 @@ public function stream(Request $request)
         AI::provider('ollama')->stream(
             [['role' => 'user', 'content' => $request->message]],
             function (string $chunk) {
-                echo "data: " . json_encode(['text' => $chunk]) . "
-
-";
+                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
                 ob_flush();
                 flush();
             }
         );
-        echo "data: [DONE]
-
-";
+        echo "data: [DONE]\n\n";
     }, 200, [
         'Content-Type' => 'text/event-stream',
         'Cache-Control' => 'no-cache',
@@ -374,10 +370,7 @@ public function review(Request $request)
     $response = AI::systemPrompt(
         'You are a senior code reviewer. Find bugs, security issues, and suggest improvements.'
     )->chat([
-        ['role' => 'user', 'content' => "Review:
-```
-{$request->code}
-```"],
+        ['role' => 'user', 'content' => "Review:\n```\n{$request->code}\n```"],
     ]);
 
     return response()->json(['review' => $response->content]);
@@ -575,16 +568,12 @@ class AIChatController extends Controller
             AI::provider('ollama')->stream(
                 [['role' => 'user', 'content' => $request->message]],
                 function (string $chunk) {
-                    echo "data: " . json_encode(['text' => $chunk]) . "
-
-";
+                    echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
                     ob_flush();
                     flush();
                 }
             );
-            echo "data: [DONE]
-
-";
+            echo "data: [DONE]\n\n";
         }, 200, [
             'Content-Type'  => 'text/event-stream',
             'Cache-Control' => 'no-cache',
@@ -674,9 +663,7 @@ Create `resources/views/ai-test.blade.php`:
             border-radius: 1.75rem; outline: none; line-height: 1.5;
             color: #0f172a;
         }
-        .button-bar {
-            display: flex; gap: 1rem; margin: 1rem 0 1.5rem;
-        }
+        .button-bar { display: flex; gap: 1rem; margin: 1rem 0 1.5rem; }
         .btn {
             border: none; padding: 0.7rem 1.8rem; border-radius: 3rem;
             font-weight: 600; font-size: 0.9rem; cursor: pointer;
@@ -706,53 +693,19 @@ Create `resources/views/ai-test.blade.php`:
             border-radius: 20px; font-size: 0.7rem;
             font-family: monospace; color: #4f46e5;
         }
-        .token-info {
-            font-size: 0.7rem; background: #e9ecef;
-            padding: 0.2rem 0.7rem; border-radius: 20px;
-        }
+        .token-info { font-size: 0.7rem; background: #e9ecef; padding: 0.2rem 0.7rem; border-radius: 20px; }
         .reply-content {
             padding: 1.5rem; background: white;
             font-size: 1rem; line-height: 1.55; color: #0f172a;
             white-space: pre-wrap; word-break: break-word;
             min-height: 160px; max-height: 450px; overflow-y: auto;
         }
-        .placeholder-message {
-            color: #94a3b8; font-style: italic;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .streaming-indicator {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: #eef2ff; border-radius: 40px;
-            padding: 0.25rem 1rem; font-size: 0.75rem;
-        }
-        .dot-pulse {
-            display: inline-block; width: 8px; height: 8px;
-            border-radius: 50%; background: #4f46e5;
-            animation: pulse 1.2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(0.8); opacity: 0.6; }
-            70% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 0 6px rgba(79,70,229,0); }
-            100% { transform: scale(0.8); opacity: 0.6; }
-        }
-        .spinner {
-            display: inline-block; width: 18px; height: 18px;
-            border: 2px solid rgba(79,70,229,0.2); border-radius: 50%;
-            border-top-color: #4f46e5; animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .chat-footer {
             background: #f9fbfd; padding: 0.9rem 2rem;
             border-top: 1px solid #e9edf2;
             font-size: 0.7rem; color: #5b6e8c; text-align: center;
         }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
-        @media (max-width: 640px) {
-            body { padding: 0.8rem; }
-            .chat-panel { padding: 1.2rem; }
-            .chat-header h1 { font-size: 1.3rem; }
-            .btn { padding: 0.6rem 1.2rem; font-size: 0.8rem; }
-        }
     </style>
 </head>
 <body>
@@ -767,7 +720,6 @@ Create `resources/views/ai-test.blade.php`:
             <span>🔁 Streaming & Direct modes</span>
         </div>
     </div>
-
     <div class="chat-panel">
         <div class="input-group">
             <textarea id="message" placeholder="Ask anything...">Tell me the history of Laravel Framework</textarea>
@@ -777,16 +729,13 @@ Create `resources/views/ai-test.blade.php`:
             <button class="btn btn-outline" id="streamBtn" onclick="streamMessage()">🌊 Stream</button>
             <button class="btn" onclick="clearResponse()" style="background:#fff;border:1px solid #e2e8f0;">🧹 Clear</button>
         </div>
-
         <div class="response-area">
             <div class="response-header">
                 <span>💬 AI Response <span class="model-tag" id="modelDisplay">qwen2:1.5b</span></span>
                 <span id="metaInfo" class="token-info">—</span>
             </div>
             <div class="reply-content" id="response">
-                <div class="placeholder-message">
-                    <span>✨</span> Your answer will appear here...
-                </div>
+                <div style="color:#94a3b8;font-style:italic;">✨ Your answer will appear here...</div>
             </div>
         </div>
     </div>
@@ -794,116 +743,80 @@ Create `resources/views/ai-test.blade.php`:
         ⚡ Powered by Laravel + Ollama (127.0.0.1:11434) | qwen2:1.5b
     </div>
 </div>
-
 <script>
     const csrfToken = '{{ csrf_token() }}';
     let activeEventSource = null;
 
-    const responseDiv = document.getElementById('response');
-    const metaInfo = document.getElementById('metaInfo');
-    const sendBtn = document.getElementById('sendBtn');
-    const streamBtn = document.getElementById('streamBtn');
-    const msgInput = document.getElementById('message');
-
-    function showLoading(text = '🤔 Thinking...') {
-        responseDiv.innerHTML = `<div style="display:flex;gap:10px;align-items:center;"><span class="spinner"></span>${text}</div>`;
-        metaInfo.innerText = '⏳ processing...';
-    }
-
-    function clearResponse() {
-        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
-        responseDiv.innerHTML = '<div class="placeholder-message"><span>✨</span> Ready for new input!</div>';
-        metaInfo.innerText = '—';
-        sendBtn.disabled = false;
-        streamBtn.disabled = false;
-    }
-
     async function sendMessage() {
-        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
-        const msg = msgInput.value.trim();
+        const msg = document.getElementById('message').value.trim();
         if (!msg) { alert('Please enter a message'); return; }
-
-        showLoading('Sending to AI...');
-        sendBtn.disabled = true;
-
+        document.getElementById('response').innerHTML = '<div>🤔 Thinking...</div>';
+        document.getElementById('sendBtn').disabled = true;
         try {
             const res = await fetch('/ai/chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                 body: JSON.stringify({ message: msg })
             });
-
             const data = await res.json();
             if (data.error) throw new Error(data.message || data.error);
-
             document.getElementById('modelDisplay').innerText = data.model || 'qwen2:1.5b';
-            metaInfo.innerHTML = `🔢 tokens: ${data.tokens !== undefined ? data.tokens : 'N/A'}`;
-            responseDiv.innerHTML = `<div style="line-height:1.5;">${escapeHtml(data.reply)}</div>`;
+            document.getElementById('metaInfo').innerHTML = `🔢 tokens: ${data.tokens ?? 'N/A'}`;
+            document.getElementById('response').innerHTML = `<div>${escapeHtml(data.reply)}</div>`;
         } catch (err) {
-            responseDiv.innerHTML = `<div style="color:#b91c1c;background:#fee2e2;padding:12px;border-radius:16px;">⚠️ ${err.message}</div>`;
-            metaInfo.innerText = 'error';
+            document.getElementById('response').innerHTML = `<div style="color:#b91c1c;">⚠️ ${err.message}</div>`;
         } finally {
-            sendBtn.disabled = false;
+            document.getElementById('sendBtn').disabled = false;
         }
     }
 
     function streamMessage() {
-        if (activeEventSource) { activeEventSource.close(); }
-        const msg = msgInput.value.trim();
+        if (activeEventSource) activeEventSource.close();
+        const msg = document.getElementById('message').value.trim();
         if (!msg) { alert('Please enter a message'); return; }
-
-        responseDiv.innerHTML = '';
-        metaInfo.innerHTML = '<span class="streaming-indicator"><span class="dot-pulse"></span> Streaming...</span>';
-        streamBtn.disabled = true;
-
+        document.getElementById('response').innerHTML = '';
+        document.getElementById('streamBtn').disabled = true;
+        let text = '';
         const evtSource = new EventSource(`/ai/stream?message=${encodeURIComponent(msg)}`);
         activeEventSource = evtSource;
-        let text = '';
-
         evtSource.onmessage = (e) => {
             if (e.data === '[DONE]') {
                 evtSource.close(); activeEventSource = null;
-                streamBtn.disabled = false;
-                metaInfo.innerHTML = `✅ Done · ${text.length} chars`;
+                document.getElementById('streamBtn').disabled = false;
+                document.getElementById('metaInfo').innerHTML = `✅ Done · ${text.length} chars`;
                 return;
             }
             try {
                 const data = JSON.parse(e.data);
                 if (data.text) {
                     text += data.text;
-                    responseDiv.innerHTML = `<div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
-                    responseDiv.scrollTop = responseDiv.scrollHeight;
+                    document.getElementById('response').innerHTML = `<div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
                 }
-            } catch (err) { console.warn('Parse error:', err); }
+            } catch (err) {}
         };
-
         evtSource.onerror = () => {
             evtSource.close(); activeEventSource = null;
-            streamBtn.disabled = false;
-            if (!text) {
-                responseDiv.innerHTML = '<div style="color:#b91c1c;">❌ Stream failed. Check Ollama is running on 127.0.0.1:11434</div>';
-            }
-            metaInfo.innerText = 'stream error';
+            document.getElementById('streamBtn').disabled = false;
         };
+    }
+
+    function clearResponse() {
+        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
+        document.getElementById('response').innerHTML = '<div style="color:#94a3b8;font-style:italic;">✨ Ready for new input!</div>';
+        document.getElementById('metaInfo').innerText = '—';
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('streamBtn').disabled = false;
     }
 
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/
-/g,'<br>');
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,'<br>');
     }
 
-    msgInput.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault(); sendMessage();
-        }
+    document.getElementById('message').addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
     });
-    msgInput.focus();
 </script>
 </body>
 </html>
@@ -939,7 +852,7 @@ Visit: `http://localhost:8000/ai-test`
 | **Loading stuck** | Check `curl http://127.0.0.1:11434/api/tags` |
 | **Connection refused** | Run `ollama serve` in terminal |
 | **Model not found** | Run `ollama pull qwen2:1.5b` |
-| **Slow first response** | qwen2:1.5b loads into memory; wait 10-30s |
+| **Slow first response** | qwen2:1.5b loads into memory; wait 10–30s |
 | **Config not loading** | Run `php artisan config:clear` |
 
 ### Debug Route (Temporary)
@@ -977,7 +890,7 @@ Route::get('/debug-ollama', function () {
 | Method | Description |
 |--------|-------------|
 | `->model('gpt-4o')` | Set the AI model |
-| `->temperature(0.7)` | Set creativity (0-2) |
+| `->temperature(0.7)` | Set creativity (0–2) |
 | `->maxTokens(500)` | Limit response length |
 | `->systemPrompt('...')` | Set AI persona/instructions |
 | `->timeout(30)` | Set request timeout in seconds |
