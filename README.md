@@ -22,6 +22,7 @@
   <a href="#-providers">Providers</a> •
   <a href="#-features">Features</a> •
   <a href="#-real-world-examples">Examples</a> •
+  <a href="#-chat-application-integration">Chat App</a> •
   <a href="#-api-reference">API Reference</a> •
   <a href="#-configuration">Configuration</a>
 </p>
@@ -239,12 +240,16 @@ public function stream(Request $request)
         AI::provider('ollama')->stream(
             [['role' => 'user', 'content' => $request->message]],
             function (string $chunk) {
-                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                echo "data: " . json_encode(['text' => $chunk]) . "
+
+";
                 ob_flush();
                 flush();
             }
         );
-        echo "data: [DONE]\n\n";
+        echo "data: [DONE]
+
+";
     }, 200, [
         'Content-Type' => 'text/event-stream',
         'Cache-Control' => 'no-cache',
@@ -359,7 +364,10 @@ public function review(Request $request)
     $response = AI::systemPrompt(
         'You are a senior code reviewer. Find bugs, security issues, and suggest improvements.'
     )->chat([
-        ['role' => 'user', 'content' => "Review:\n```\n{$request->code}\n```"],
+        ['role' => 'user', 'content' => "Review:
+```
+{$request->code}
+```"],
     ]);
 
     return response()->json(['review' => $response->content]);
@@ -457,6 +465,489 @@ public function about()
 ```html
 <!-- Blade -->
 <p class="tagline">{{ $tagline }}</p>
+```
+
+---
+
+## 🤖 Chat Application Integration
+
+Complete AI chat interface built with LaravelAI + Ollama. Features dual-mode chat (normal + streaming) with a modern responsive UI.
+
+### 📁 File Structure
+
+```
+easyjobs/
+├── app/
+│   └── Http/
+│       └── Controllers/
+│           └── AIChatController.php      # Chat & Stream handlers
+├── resources/
+│   └── views/
+│       └── ai-test.blade.php             # Chat UI (HTML/CSS/JS)
+├── routes/
+│   └── web.php                           # Routes definition
+└── .env                                  # Ollama configuration
+```
+
+### ⚙️ Environment Configuration
+
+```env
+AI_PROVIDER=ollama
+AI_OLLAMA_URL=http://127.0.0.1:11434
+AI_OLLAMA_MODEL=qwen2:1.5b
+AI_OLLAMA_TIMEOUT=120
+```
+
+> **Note:** `127.0.0.1` for local Ollama. For remote server use `192.168.x.x` or appropriate IP.
+
+### 🎮 Step 1: Create Controller
+
+```bash
+php artisan make:controller AIChatController
+```
+
+**`app/Http/Controllers/AIChatController.php`**
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use EasyAI\LaravelAI\Facades\AI;
+use EasyAI\LaravelAI\Exceptions\ConnectionException;
+
+class AIChatController extends Controller
+{
+    /**
+     * Normal chat — returns full response with token stats.
+     */
+    public function chat(Request $request)
+    {
+        $request->validate([
+            'message' => 'required|string|max:2000'
+        ]);
+
+        try {
+            $response = AI::provider('ollama')
+                ->timeout(120)
+                ->chat([
+                    ['role' => 'user', 'content' => $request->message]
+                ]);
+
+            return response()->json([
+                'reply'  => $response->content,
+                'model'  => $response->model,
+                'tokens' => $response->totalTokens
+            ]);
+        } catch (ConnectionException $e) {
+            return response()->json([
+                'error'   => 'Ollama server connection failed',
+                'message' => $e->getMessage(),
+                'check'   => 'Run: ollama serve (ensure 127.0.0.1:11434 is accessible)'
+            ], 503);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => 'AI request failed',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Streaming chat — Server-Sent Events (SSE) for real-time output.
+     */
+    public function stream(Request $request)
+    {
+        $request->validate(['message' => 'required|string']);
+
+        return response()->stream(function () use ($request) {
+            AI::provider('ollama')->stream(
+                [['role' => 'user', 'content' => $request->message]],
+                function (string $chunk) {
+                    echo "data: " . json_encode(['text' => $chunk]) . "
+
+";
+                    ob_flush();
+                    flush();
+                }
+            );
+            echo "data: [DONE]
+
+";
+        }, 200, [
+            'Content-Type'  => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+        ]);
+    }
+}
+```
+
+### 🛣️ Step 2: Routes
+
+**`routes/web.php`**
+
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AIChatController;
+
+// Public routes
+Route::get('/', fn () => view('welcome'));
+
+// AI Chat API
+Route::post('/ai/chat', [AIChatController::class, 'chat']);
+Route::get('/ai/stream', [AIChatController::class, 'stream']);
+
+// Chat UI
+Route::get('/ai-test', fn () => view('ai-test'));
+```
+
+### 🎨 Step 3: Chat UI (ai-test.blade.php)
+
+Create `resources/views/ai-test.blade.php`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel AI Chat · Ollama Qwen2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(145deg, #f1f5f9 0%, #e6edf4 100%);
+            font-family: 'Inter', system-ui, sans-serif;
+            padding: 1.5rem; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .chat-container {
+            max-width: 1100px; width: 100%;
+            background: rgba(255,255,255,0.92);
+            border-radius: 2rem;
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.25);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 1.5rem 2rem; color: white;
+        }
+        .chat-header h1 {
+            font-size: 1.7rem; font-weight: 600;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .badge-model {
+            background: rgba(255,255,255,0.2);
+            padding: 0.25rem 0.9rem; border-radius: 40px;
+            font-size: 0.75rem; font-family: monospace;
+        }
+        .sub {
+            font-size: 0.85rem; color: #cbd5e6;
+            margin-top: 8px; display: flex; gap: 20px;
+        }
+        .chat-panel { padding: 1.8rem 2rem 2rem; }
+        .input-group {
+            background: #fff; border-radius: 1.75rem;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+            border: 1px solid #e2e8f0;
+            transition: box-shadow 0.2s, border 0.2s;
+        }
+        .input-group:focus-within {
+            border-color: #818cf8;
+            box-shadow: 0 6px 18px rgba(99,102,241,0.15);
+        }
+        textarea {
+            width: 100%; border: none; padding: 1.2rem 1.5rem;
+            font-size: 1rem; background: transparent; resize: vertical;
+            border-radius: 1.75rem; outline: none; line-height: 1.5;
+            color: #0f172a;
+        }
+        .button-bar {
+            display: flex; gap: 1rem; margin: 1rem 0 1.5rem;
+        }
+        .btn {
+            border: none; padding: 0.7rem 1.8rem; border-radius: 3rem;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer;
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary {
+            background: #4f46e5; color: white;
+            box-shadow: 0 4px 10px rgba(79,70,229,0.25);
+        }
+        .btn-primary:hover { background: #4338ca; transform: translateY(-2px); }
+        .btn-outline {
+            background: white; border: 1px solid #cbd5e1; color: #1f2937;
+        }
+        .btn-outline:hover { background: #f8fafc; border-color: #818cf8; }
+        .response-area {
+            background: #fefefe; border-radius: 1.5rem;
+            border: 1px solid #eef2ff; overflow: hidden;
+        }
+        .response-header {
+            background: #f8fafd; padding: 0.9rem 1.5rem;
+            border-bottom: 1px solid #e9edf2;
+            font-size: 0.85rem; font-weight: 600; color: #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .model-tag {
+            background: #eef2ff; padding: 0.2rem 0.7rem;
+            border-radius: 20px; font-size: 0.7rem;
+            font-family: monospace; color: #4f46e5;
+        }
+        .token-info {
+            font-size: 0.7rem; background: #e9ecef;
+            padding: 0.2rem 0.7rem; border-radius: 20px;
+        }
+        .reply-content {
+            padding: 1.5rem; background: white;
+            font-size: 1rem; line-height: 1.55; color: #0f172a;
+            white-space: pre-wrap; word-break: break-word;
+            min-height: 160px; max-height: 450px; overflow-y: auto;
+        }
+        .placeholder-message {
+            color: #94a3b8; font-style: italic;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .streaming-indicator {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #eef2ff; border-radius: 40px;
+            padding: 0.25rem 1rem; font-size: 0.75rem;
+        }
+        .dot-pulse {
+            display: inline-block; width: 8px; height: 8px;
+            border-radius: 50%; background: #4f46e5;
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.6; }
+            70% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 0 6px rgba(79,70,229,0); }
+            100% { transform: scale(0.8); opacity: 0.6; }
+        }
+        .spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 2px solid rgba(79,70,229,0.2); border-radius: 50%;
+            border-top-color: #4f46e5; animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .chat-footer {
+            background: #f9fbfd; padding: 0.9rem 2rem;
+            border-top: 1px solid #e9edf2;
+            font-size: 0.7rem; color: #5b6e8c; text-align: center;
+        }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        @media (max-width: 640px) {
+            body { padding: 0.8rem; }
+            .chat-panel { padding: 1.2rem; }
+            .chat-header h1 { font-size: 1.3rem; }
+            .btn { padding: 0.6rem 1.2rem; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>
+            <span>🤖 Laravel AI Chat</span>
+            <span class="badge-model">Ollama · qwen2:1.5b</span>
+        </h1>
+        <div class="sub">
+            <span>⚡ Local LLM (127.0.0.1:11434)</span>
+            <span>🔁 Streaming & Direct modes</span>
+        </div>
+    </div>
+
+    <div class="chat-panel">
+        <div class="input-group">
+            <textarea id="message" placeholder="Ask anything...">Tell me the history of Laravel Framework</textarea>
+        </div>
+        <div class="button-bar">
+            <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">✨ Send</button>
+            <button class="btn btn-outline" id="streamBtn" onclick="streamMessage()">🌊 Stream</button>
+            <button class="btn" onclick="clearResponse()" style="background:#fff;border:1px solid #e2e8f0;">🧹 Clear</button>
+        </div>
+
+        <div class="response-area">
+            <div class="response-header">
+                <span>💬 AI Response <span class="model-tag" id="modelDisplay">qwen2:1.5b</span></span>
+                <span id="metaInfo" class="token-info">—</span>
+            </div>
+            <div class="reply-content" id="response">
+                <div class="placeholder-message">
+                    <span>✨</span> Your answer will appear here...
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="chat-footer">
+        ⚡ Powered by Laravel + Ollama (127.0.0.1:11434) | qwen2:1.5b
+    </div>
+</div>
+
+<script>
+    const csrfToken = '{{ csrf_token() }}';
+    let activeEventSource = null;
+
+    const responseDiv = document.getElementById('response');
+    const metaInfo = document.getElementById('metaInfo');
+    const sendBtn = document.getElementById('sendBtn');
+    const streamBtn = document.getElementById('streamBtn');
+    const msgInput = document.getElementById('message');
+
+    function showLoading(text = '🤔 Thinking...') {
+        responseDiv.innerHTML = `<div style="display:flex;gap:10px;align-items:center;"><span class="spinner"></span>${text}</div>`;
+        metaInfo.innerText = '⏳ processing...';
+    }
+
+    function clearResponse() {
+        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
+        responseDiv.innerHTML = '<div class="placeholder-message"><span>✨</span> Ready for new input!</div>';
+        metaInfo.innerText = '—';
+        sendBtn.disabled = false;
+        streamBtn.disabled = false;
+    }
+
+    async function sendMessage() {
+        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
+        const msg = msgInput.value.trim();
+        if (!msg) { alert('Please enter a message'); return; }
+
+        showLoading('Sending to AI...');
+        sendBtn.disabled = true;
+
+        try {
+            const res = await fetch('/ai/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ message: msg })
+            });
+
+            const data = await res.json();
+            if (data.error) throw new Error(data.message || data.error);
+
+            document.getElementById('modelDisplay').innerText = data.model || 'qwen2:1.5b';
+            metaInfo.innerHTML = `🔢 tokens: ${data.tokens !== undefined ? data.tokens : 'N/A'}`;
+            responseDiv.innerHTML = `<div style="line-height:1.5;">${escapeHtml(data.reply)}</div>`;
+        } catch (err) {
+            responseDiv.innerHTML = `<div style="color:#b91c1c;background:#fee2e2;padding:12px;border-radius:16px;">⚠️ ${err.message}</div>`;
+            metaInfo.innerText = 'error';
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    function streamMessage() {
+        if (activeEventSource) { activeEventSource.close(); }
+        const msg = msgInput.value.trim();
+        if (!msg) { alert('Please enter a message'); return; }
+
+        responseDiv.innerHTML = '';
+        metaInfo.innerHTML = '<span class="streaming-indicator"><span class="dot-pulse"></span> Streaming...</span>';
+        streamBtn.disabled = true;
+
+        const evtSource = new EventSource(`/ai/stream?message=${encodeURIComponent(msg)}`);
+        activeEventSource = evtSource;
+        let text = '';
+
+        evtSource.onmessage = (e) => {
+            if (e.data === '[DONE]') {
+                evtSource.close(); activeEventSource = null;
+                streamBtn.disabled = false;
+                metaInfo.innerHTML = `✅ Done · ${text.length} chars`;
+                return;
+            }
+            try {
+                const data = JSON.parse(e.data);
+                if (data.text) {
+                    text += data.text;
+                    responseDiv.innerHTML = `<div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+                    responseDiv.scrollTop = responseDiv.scrollHeight;
+                }
+            } catch (err) { console.warn('Parse error:', err); }
+        };
+
+        evtSource.onerror = () => {
+            evtSource.close(); activeEventSource = null;
+            streamBtn.disabled = false;
+            if (!text) {
+                responseDiv.innerHTML = '<div style="color:#b91c1c;">❌ Stream failed. Check Ollama is running on 127.0.0.1:11434</div>';
+            }
+            metaInfo.innerText = 'stream error';
+        };
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/
+/g,'<br>');
+    }
+
+    msgInput.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault(); sendMessage();
+        }
+    });
+    msgInput.focus();
+</script>
+</body>
+</html>
+```
+
+### 🚀 Step 4: Run & Test
+
+```bash
+# Terminal 1 — Start Ollama
+ollama serve
+
+# Terminal 2 — Start Laravel
+cd easyjobs
+php artisan serve
+```
+
+Visit: `http://localhost:8000/ai-test`
+
+#### Test Cases
+
+| Action | Expected Result |
+|--------|----------------|
+| Type message → **Send** | Full reply + token count |
+| Type message → **Stream** | Real-time word-by-word output |
+| **Clear** button | Resets response area |
+| Empty message | Alert: "Please enter a message" |
+| Ollama offline | Error: "Connection failed" |
+
+### 🔧 Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| **Loading stuck** | Check `curl http://127.0.0.1:11434/api/tags` |
+| **Connection refused** | Run `ollama serve` in terminal |
+| **Model not found** | Run `ollama pull qwen2:1.5b` |
+| **Slow first response** | qwen2:1.5b loads into memory; wait 10-30s |
+| **Config not loading** | Run `php artisan config:clear` |
+
+### Debug Route (Temporary)
+
+Add to `routes/web.php`:
+
+```php
+Route::get('/debug-ollama', function () {
+    try {
+        return response()->json([
+            'health' => AI::provider('ollama')->health(),
+            'models' => AI::provider('ollama')->models(),
+            'url'    => config('ai.providers.ollama.url'),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
 ```
 
 ---
