@@ -1,5 +1,5 @@
 {
-    "name": "muradbdinfo/laravelai",
+    "name": "easyit/laravelai",
     "description": "Unified AI chat for Laravel — Ollama, OpenAI, Anthropic (Claude), DeepSeek. One interface, any AI.",
     "keywords": ["laravel", "ai", "ollama", "openai", "chatgpt", "claude", "anthropic", "deepseek", "llm"],
     "license": "MIT",
