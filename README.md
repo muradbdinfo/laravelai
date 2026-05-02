@@ -63,7 +63,7 @@ php artisan vendor:publish --tag=ai-config
 ```env
 AI_PROVIDER=ollama
 AI_OLLAMA_URL=http://127.0.0.1:11434
-AI_OLLAMA_MODEL=llama3.1:8b
+AI_OLLAMA_MODEL=qwen2:1.5b
 ```
 
 **That's it!** You're ready to use AI in your Laravel app.
@@ -124,7 +124,7 @@ Run AI models on your own server. No API key needed.
 ```env
 AI_PROVIDER=ollama
 AI_OLLAMA_URL=http://127.0.0.1:11434
-AI_OLLAMA_MODEL=llama3.1:8b
+AI_OLLAMA_MODEL=qwen2:1.5b
 ```
 
 ```php
@@ -182,7 +182,7 @@ Customize every aspect of your AI request with a fluent API:
 
 ```php
 $response = AI::provider('ollama')
-    ->model('llama3.1:8b')        // Choose model
+    ->model('qwen2:1.5b')        // Choose model
     ->temperature(0.9)             // Creativity (0 = focused, 2 = creative)
     ->maxTokens(500)               // Limit response length
     ->systemPrompt('You are a helpful Laravel expert.')
@@ -269,7 +269,7 @@ if (AI::provider('ollama')->health()) {
 
 ```php
 $models = AI::provider('ollama')->models();
-// ['llama3.1:8b', 'qwen2:1.5b', 'phi3:mini']
+// ['qwen2:1.5b', 'qwen2:1.5b', 'phi3:mini']
 
 $models = AI::provider('openai')->models();
 // ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', ...]
@@ -543,7 +543,7 @@ return [
         'ollama' => [
             'driver'  => 'ollama',
             'url'     => env('AI_OLLAMA_URL', 'http://127.0.0.1:11434'),
-            'model'   => env('AI_OLLAMA_MODEL', 'llama3.1:8b'),
+            'model'   => env('AI_OLLAMA_MODEL', 'qwen2:1.5b'),
             'timeout' => (int) env('AI_OLLAMA_TIMEOUT', 120),
             'options' => ['temperature' => 0.7],
         ],
@@ -599,7 +599,7 @@ AI_PROVIDER=ollama
 
 # Ollama (self-hosted, free)
 AI_OLLAMA_URL=http://127.0.0.1:11434
-AI_OLLAMA_MODEL=llama3.1:8b
+AI_OLLAMA_MODEL=qwen2:1.5b
 AI_OLLAMA_TIMEOUT=120
 
 # OpenAI (ChatGPT)
@@ -682,7 +682,7 @@ use Illuminate\Support\Facades\Http;
 Http::fake([
     '127.0.0.1:11434/api/chat' => Http::response([
         'message' => ['content' => 'Mocked response'],
-        'model' => 'llama3.1:8b',
+        'model' => 'qwen2:1.5b',
         'prompt_eval_count' => 10,
         'eval_count' => 5,
         'done' => true,
