@@ -10,6 +10,10 @@
 </p>
 
 <p align="center">
+  <sub>👨‍💻 Full Stack Laravel Vue Developer and DevOps Engineer</sub>
+</p>
+
+<p align="center">
   <a href="https://packagist.org/packages/muradbdinfo/laravelai"><img src="https://img.shields.io/packagist/v/muradbdinfo/laravelai.svg?style=flat-square&label=version" alt="Latest Version"></a>
   <a href="https://packagist.org/packages/muradbdinfo/laravelai"><img src="https://img.shields.io/packagist/dt/muradbdinfo/laravelai.svg?style=flat-square&label=downloads" alt="Total Downloads"></a>
   <a href="https://packagist.org/packages/muradbdinfo/laravelai"><img src="https://img.shields.io/packagist/l/muradbdinfo/laravelai.svg?style=flat-square" alt="License"></a>
@@ -25,6 +29,12 @@
   <a href="#-chat-application-integration">Chat App</a> •
   <a href="#-api-reference">API Reference</a> •
   <a href="#-configuration">Configuration</a>
+</p>
+
+<p align="center">
+  <a href="https://www.facebook.com/easybdit">📘 Facebook Page</a> •
+  <a href="https://www.facebook.com/groups/eitbd">👥 Facebook Group</a> •
+  <a href="https://chat.whatsapp.com/E3VV0K6lkrqEgXdngrt2Rk">💬 WhatsApp Group</a>
 </p>
 
 ---
@@ -1225,7 +1235,9 @@ If this package saves you time, consider supporting its development:
 
 ## 👤 Credits
 
-**Md Murad Hosen** — Full-Stack Developer from Chittagong, Bangladesh 🇧🇩
+**Md Murad Hosen** — Full-Stack Laravel Vue Developer and DevOps Engineer from Chittagong, Bangladesh 🇧🇩
+
+### Personal Links
 
 | Platform | Link |
 |----------|------|
@@ -1234,6 +1246,14 @@ If this package saves you time, consider supporting its development:
 | 📘 Facebook | [Murad Hosen](https://facebook.com/muradhosenofficial) |
 | 📱 WhatsApp | [+8801827517700](https://wa.me/8801827517700) |
 | 💻 GitHub | [muradbdinfo](https://github.com/muradbdinfo) |
+
+### Community Links
+
+| Platform | Link |
+|----------|------|
+| 📘 Facebook Page | [EasyBD IT](https://www.facebook.com/easybdit) |
+| 👥 Facebook Group | [EITBD](https://www.facebook.com/groups/eitbd) |
+| 💬 WhatsApp Group | [Join Chat](https://chat.whatsapp.com/E3VV0K6lkrqEgXdngrt2Rk) |
 
 ---
 
