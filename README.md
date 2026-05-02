@@ -73,7 +73,7 @@ AI_OLLAMA_MODEL=llama3.1:8b
 | Requirement | Version |
 |------------|---------|
 | PHP | 8.2+ |
-| Laravel | 10, 11, 12 |
+| Laravel | 10, 11, 12, 13 |
 
 ---
 
