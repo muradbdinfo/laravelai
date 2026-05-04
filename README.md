@@ -111,8 +111,8 @@ AI_OLLAMA_MODEL=qwen2:1.5b
 
 | Requirement | Version |
 |-------------|---------|
-| PHP | 8.2+ |
-| Laravel | 10, 11, 12, 13 |
+| PHP | 8.0+ |
+| Laravel | 9, 10, 11, 12, 13 |
 
 ---
 
