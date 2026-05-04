@@ -18,6 +18,9 @@ abstract class AbstractDriver implements AIProviderInterface
     protected ?string $currentSystemPrompt = null;
     protected ?int   $currentTimeout = null;
     protected ?\Closure $streamCallback = null;
+    protected string|int|null $currentKeepAlive = null;
+    protected string|array|null $currentFormat = null;
+    protected array $currentOptions = [];
 
     public function __construct(array $config)
     {
@@ -55,12 +58,40 @@ abstract class AbstractDriver implements AIProviderInterface
         return $this;
     }
 
+    public function keepAlive(string|int $duration): static
+    {
+        $this->currentKeepAlive = $duration;
+        return $this;
+    }
+
+    public function format(string|array $format): static
+    {
+        $this->currentFormat = $format;
+        return $this;
+    }
+
+    public function options(array $options): static
+    {
+        $this->currentOptions = $options;
+        return $this;
+    }
+
     public function stream(array $messages, callable $callback): AIResponseInterface
     {
         $this->streamCallback = $callback;
         $response = $this->chat($messages);
         $this->streamCallback = null;
         return $response;
+    }
+
+    /**
+     * Default embed — override in drivers that support it.
+     */
+    public function embed(string|array $input): array
+    {
+        throw new \BadMethodCallException(
+            "Embeddings are not supported by the [{$this->getProviderName()}] provider."
+        );
     }
 
     protected function getTimeout(): int
@@ -107,10 +138,13 @@ abstract class AbstractDriver implements AIProviderInterface
      */
     protected function resetOverrides(): void
     {
-        $this->currentTemp        = null;
-        $this->currentMaxTokens   = null;
+        $this->currentTemp         = null;
+        $this->currentMaxTokens    = null;
         $this->currentSystemPrompt = null;
-        $this->currentTimeout     = null;
-        $this->streamCallback     = null;
+        $this->currentTimeout      = null;
+        $this->streamCallback      = null;
+        $this->currentKeepAlive    = null;
+        $this->currentFormat       = null;
+        $this->currentOptions      = [];
     }
 }

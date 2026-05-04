@@ -1,27 +1,65 @@
 <?php
 
-namespace EasyAI\LaravelAI\Facades;
+return [
+    'default' => env('AI_PROVIDER', 'ollama'),
 
-use EasyAI\LaravelAI\AIManager;
-use Illuminate\Support\Facades\Facade;
+    'providers' => [
 
-/**
- * @method static \EasyAI\LaravelAI\Contracts\AIProviderInterface provider(string $name = null)
- * @method static \EasyAI\LaravelAI\Contracts\AIResponseInterface chat(array $messages)
- * @method static \EasyAI\LaravelAI\Contracts\AIProviderInterface model(string $model)
- * @method static \EasyAI\LaravelAI\Contracts\AIProviderInterface temperature(float $temp)
- * @method static \EasyAI\LaravelAI\Contracts\AIProviderInterface maxTokens(int $tokens)
- * @method static \EasyAI\LaravelAI\Contracts\AIProviderInterface systemPrompt(string $prompt)
- * @method static bool health()
- * @method static array models()
- * @method static int estimateTokens(string|array $input)
- *
- * @see AIManager
- */
-class AI extends Facade
-{
-    protected static function getFacadeAccessor(): string
-    {
-        return 'laravel-ai';
-    }
-}
+        'ollama' => [
+            'driver'     => 'ollama',
+            'url'        => env('AI_OLLAMA_URL', 'http://127.0.0.1:11434'),
+            'model'      => env('AI_OLLAMA_MODEL', 'llama3.1:8b'),
+            'timeout'    => (int) env('AI_OLLAMA_TIMEOUT', 120),
+            'keep_alive' => env('AI_OLLAMA_KEEP_ALIVE', '5m'),
+            'options'    => [
+                'temperature' => 0.7,
+            ],
+        ],
+
+        'openai' => [
+            'driver'  => 'openai',
+            'api_key' => env('AI_OPENAI_KEY'),
+            'url'     => env('AI_OPENAI_URL', 'https://api.openai.com/v1'),
+            'model'   => env('AI_OPENAI_MODEL', 'gpt-4o-mini'),
+            'timeout' => (int) env('AI_OPENAI_TIMEOUT', 60),
+            'options' => [
+                'temperature' => 0.7,
+                'max_tokens'  => 2000,
+            ],
+        ],
+
+        'anthropic' => [
+            'driver'  => 'anthropic',
+            'api_key' => env('AI_ANTHROPIC_KEY'),
+            'url'     => env('AI_ANTHROPIC_URL', 'https://api.anthropic.com/v1'),
+            'model'   => env('AI_ANTHROPIC_MODEL', 'claude-sonnet-4-20250514'),
+            'version' => env('AI_ANTHROPIC_VERSION', '2023-06-01'),
+            'timeout' => (int) env('AI_ANTHROPIC_TIMEOUT', 60),
+            'options' => [
+                'max_tokens' => 2000,
+            ],
+        ],
+
+        'deepseek' => [
+            'driver'  => 'deepseek',
+            'api_key' => env('AI_DEEPSEEK_KEY'),
+            'url'     => env('AI_DEEPSEEK_URL', 'https://api.deepseek.com/v1'),
+            'model'   => env('AI_DEEPSEEK_MODEL', 'deepseek-chat'),
+            'timeout' => (int) env('AI_DEEPSEEK_TIMEOUT', 60),
+            'options' => [
+                'temperature' => 0.7,
+                'max_tokens'  => 2000,
+            ],
+        ],
+    ],
+
+    'logging' => [
+        'enabled' => (bool) env('AI_LOG_ENABLED', false),
+        'channel' => env('AI_LOG_CHANNEL', 'stack'),
+    ],
+
+    'retry' => [
+        'times' => (int) env('AI_RETRY_TIMES', 2),
+        'sleep' => (int) env('AI_RETRY_SLEEP', 1000),
+    ],
+];

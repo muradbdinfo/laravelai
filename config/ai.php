@@ -6,11 +6,12 @@ return [
     'providers' => [
 
         'ollama' => [
-            'driver'  => 'ollama',
-            'url'     => env('AI_OLLAMA_URL', 'http://127.0.0.1:11434'),
-            'model'   => env('AI_OLLAMA_MODEL', 'llama3.1:8b'),
-            'timeout' => (int) env('AI_OLLAMA_TIMEOUT', 120),
-            'options' => [
+            'driver'     => 'ollama',
+            'url'        => env('AI_OLLAMA_URL', 'http://127.0.0.1:11434'),
+            'model'      => env('AI_OLLAMA_MODEL', 'llama3.1:8b'),
+            'timeout'    => (int) env('AI_OLLAMA_TIMEOUT', 120),
+            'keep_alive' => env('AI_OLLAMA_KEEP_ALIVE', '5m'),
+            'options'    => [
                 'temperature' => 0.7,
             ],
         ],

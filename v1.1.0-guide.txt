@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════
-  LaravelAI v1.2.0 — Ollama Enrichment Guide
+  LaravelAI v1.1.0 — Ollama Enrichment Guide
   What Changed, Where, and How to Use It
 ═══════════════════════════════════════════════════════════════
 
@@ -174,10 +174,23 @@ Step 4: Run tests:
 
 Step 5: Commit, tag, push:
    git add -A
-   git commit -m "feat: v1.2.0 — Ollama enrichment (embeddings, JSON mode, keep_alive, options, model management)"
-   git tag v1.2.0
+   git commit -m "feat: v1.1.0 — Ollama enrichment (embeddings, JSON mode, keep_alive, options, model management)"
+   git tag v1.1.0
    git push origin main --tags
 
 
+═══════════════════════════════════════════════════════════════
+  YOUTUBE VIDEO OUTLINE (suggested)
+═══════════════════════════════════════════════════════════════
+
+Title: "LaravelAI v1.1 — 5 New Ollama Features in 10 Minutes"
+
+1. Intro (30s) — What's new in v1.1
+2. Demo: JSON Mode (2min) — format('json') with a real prompt
+3. Demo: Structured Output (2min) — schema-based extraction
+4. Demo: Embeddings (2min) — generate vectors, show array output
+5. Demo: keep_alive + options (1min) — show memory control, seed for reproducible output
+6. Demo: Model Management (2min) — pull, show, delete from Laravel
+7. Outro (30s) — GitHub link, star, subscribe
 
 ═══════════════════════════════════════════════════════════════

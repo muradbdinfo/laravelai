@@ -22,5 +22,13 @@ interface AIProviderInterface
 
     public function timeout(int $seconds): static;
 
+    public function keepAlive(string|int $duration): static;
+
+    public function format(string|array $format): static;
+
+    public function options(array $options): static;
+
+    public function embed(string|array $input): array;
+
     public function getProviderName(): string;
 }
