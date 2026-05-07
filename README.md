@@ -25,7 +25,7 @@
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-providers">Providers</a> •
   <a href="#-features">Features</a> •
-  <a href="#-ollama-advanced-features">Ollama Advanced</a> •
+  <a href="#-rag-built-in">RAG</a> •
   <a href="#-real-world-examples">Examples</a> •
   <a href="#-chat-application-integration">Chat App</a> •
   <a href="#-api-reference">API Reference</a> •
@@ -111,8 +111,8 @@ AI_OLLAMA_MODEL=qwen2:1.5b
 
 | Requirement | Version |
 |-------------|---------|
-| PHP | 8.0+ |
-| Laravel | 9, 10, 11, 12, 13 |
+| PHP | 8.2+ |
+| Laravel | 10, 11, 12, 13 |
 
 ---
 
@@ -308,7 +308,7 @@ if (AI::provider('ollama')->health()) {
 
 ```php
 $models = AI::provider('ollama')->models();
-// ['qwen2:1.5b', 'llama3.1:8b', 'phi3:mini']
+// ['qwen2:1.5b', 'qwen2:1.5b', 'phi3:mini']
 
 $models = AI::provider('openai')->models();
 // ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', ...]
@@ -352,203 +352,97 @@ try {
 
 ---
 
-## 🧠 Ollama Advanced Features
+## 🧠 RAG (Built-in)
 
-> **New in v1.2.0** — Deep Ollama integration with embeddings, JSON mode, structured outputs, model management, and more.
+LaravelAI includes a built-in RAG (Retrieval-Augmented Generation) system — store documents as embeddings, search by similarity, and let AI answer questions using your own data. No external vector database required.
 
-### 9. JSON Mode — Get Structured JSON Responses
-
-Force the AI to return valid JSON instead of free text:
-
-```php
-$response = AI::provider('ollama')
-    ->format('json')
-    ->systemPrompt('Return JSON with keys: name, age, country')
-    ->chat([['role' => 'user', 'content' => 'Tell me about Messi']]);
-
-$data = json_decode($response->content, true);
-// ['name' => 'Lionel Messi', 'age' => 38, 'country' => 'Argentina']
-```
-
-> **Important:** Always include a system prompt instructing the model to use JSON for best results.
-
-### 10. Structured Outputs — Schema-Based Responses
-
-Pass a JSON schema and get guaranteed structured data — perfect for APIs, form filling, and data extraction:
-
-```php
-$response = AI::provider('ollama')
-    ->format([
-        'type' => 'object',
-        'properties' => [
-            'name'      => ['type' => 'string'],
-            'capital'   => ['type' => 'string'],
-            'languages' => ['type' => 'array', 'items' => ['type' => 'string']],
-        ],
-        'required' => ['name', 'capital', 'languages'],
-    ])
-    ->chat([['role' => 'user', 'content' => 'Tell me about Bangladesh']]);
-
-$country = json_decode($response->content, true);
-// ['name' => 'Bangladesh', 'capital' => 'Dhaka', 'languages' => ['Bengali']]
-```
-
-**Extract Product Data:**
-
-```php
-$response = AI::provider('ollama')
-    ->format([
-        'type' => 'object',
-        'properties' => [
-            'product' => ['type' => 'string'],
-            'price'   => ['type' => 'number'],
-            'inStock' => ['type' => 'boolean'],
-        ],
-        'required' => ['product', 'price', 'inStock'],
-    ])
-    ->chat([['role' => 'user', 'content' => 'iPhone 16 Pro costs $999 and is available now']]);
-
-$product = json_decode($response->content, true);
-// ['product' => 'iPhone 16 Pro', 'price' => 999, 'inStock' => true]
-```
-
-### 11. Embeddings — Vector Generation for RAG
-
-Generate vector embeddings for semantic search, similarity matching, and RAG applications:
+### Setup
 
 ```bash
-# First, pull an embedding model
+# 1. Pull an embedding model
 ollama pull nomic-embed-text
+
+# 2. Run migrations — creates ai_documents table automatically
+php artisan migrate
 ```
 
-```php
-// Single input — returns one vector
-$vectors = AI::provider('ollama')
-    ->model('nomic-embed-text')
-    ->embed('Laravel is a PHP framework');
-// [[0.0123, -0.0456, 0.0789, ...]]
+Add to `.env`:
 
-// Batch input — returns one vector per input
-$vectors = AI::provider('ollama')
-    ->model('nomic-embed-text')
-    ->embed([
-        'Laravel is great',
-        'Vue.js is reactive',
-        'PHP is powerful',
-    ]);
-// [[...], [...], [...]]
+```env
+AI_RAG_PROVIDER=ollama
+AI_RAG_EMBED_MODEL=nomic-embed-text
+AI_RAG_CHAT_PROVIDER=ollama
 ```
 
-**Build a Simple Similarity Search:**
+### Ingest Documents
 
 ```php
-// 1. Generate embeddings for your documents
-$docs = ['Laravel is a PHP framework', 'Vue.js is a JavaScript framework', 'MySQL is a database'];
+// Ingest a string
+AI::rag()->ingest('Laravel is a PHP framework using MVC pattern.', 'docs');
 
-$docVectors = AI::provider('ollama')
-    ->model('nomic-embed-text')
-    ->embed($docs);
-
-// 2. Generate embedding for the search query
-$queryVector = AI::provider('ollama')
-    ->model('nomic-embed-text')
-    ->embed('What PHP tools are available?');
-
-// 3. Compare using cosine similarity (store in pgvector, Milvus, etc.)
+// Ingest via Artisan
+php artisan ai:rag:ingest storage/docs/manual.txt --source=manual
+php artisan ai:rag:ingest storage/docs/ --flush
 ```
 
-### 12. keep_alive — Control Model Memory
-
-Control how long Ollama keeps a model loaded in memory after a request:
+### Ask Questions
 
 ```php
-// Keep loaded for 30 minutes (faster repeat calls)
-AI::provider('ollama')->keepAlive('30m')->chat($messages);
-
-// Keep permanently loaded (never unload — best for production)
-AI::provider('ollama')->keepAlive(-1)->chat($messages);
-
-// Unload immediately after response (save RAM)
-AI::provider('ollama')->keepAlive(0)->chat($messages);
+$answer = AI::rag()->ask('What is Laravel?');
+// "Laravel is a PHP framework using MVC pattern..."
 ```
 
-> **Default:** 5 minutes. Set via `AI_OLLAMA_KEEP_ALIVE=5m` in `.env` or per-request with `->keepAlive()`.
-
-### 13. Custom Options — Fine-Tune Generation
-
-Pass any Ollama option like `top_p`, `top_k`, `seed`, and more:
+### Search (without AI)
 
 ```php
-$response = AI::provider('ollama')
-    ->temperature(0.8)
-    ->maxTokens(500)              // ← maps to Ollama's num_predict
-    ->options([
-        'top_p'          => 0.9,  // nucleus sampling
-        'top_k'          => 40,   // top-k sampling
-        'seed'           => 42,   // reproducible outputs
-        'repeat_penalty' => 1.1,  // reduce repetition
-        'num_ctx'        => 4096, // context window size
-    ])
-    ->chat($messages);
+$results = AI::rag()->search('MVC pattern');
+// [['content' => '...', 'source' => 'docs', 'score' => 0.91]]
 ```
 
-> **Note:** `maxTokens()` now correctly maps to Ollama's `num_predict` parameter. In v1.1.x it was not passed through.
-
-### 14. Model Management (Ollama)
-
-Manage Ollama models directly from your Laravel app — no CLI needed:
+### Flush All Documents
 
 ```php
-$ollama = AI::provider('ollama');
-
-// Show model details (size, parameters, family, template)
-$info = $ollama->showModel('llama3.1:8b');
-
-// Pull/download a model with progress callback
-$ollama->pullModel('qwen2:1.5b', function ($status) {
-    echo $status['status']; // "downloading", "verifying", "success"
-    if (isset($status['completed'], $status['total'])) {
-        $pct = round($status['completed'] / $status['total'] * 100);
-        echo " — {$pct}%";
-    }
-});
-
-// Delete a model
-$ollama->deleteModel('old-model:latest');
-
-// Copy/alias a model
-$ollama->copyModel('llama3.1:8b', 'my-assistant:latest');
-
-// List currently loaded models (with VRAM/memory info)
-$running = $ollama->runningModels();
-// [['name' => 'llama3.1:8b', 'size' => 4683075271, ...]]
+AI::rag()->flush();
 ```
 
-**Artisan Command Example — Pull Model:**
+### RAG in a Controller
 
 ```php
-class PullModel extends Command
+class DocsController extends Controller
 {
-    protected $signature = 'ai:pull {model}';
-    protected $description = 'Download an Ollama model';
-
-    public function handle()
+    public function ask(Request $request)
     {
-        $model = $this->argument('model');
-        $this->info("Pulling {$model}...");
+        $request->validate(['question' => 'required|string']);
 
-        AI::provider('ollama')->pullModel($model, function ($status) {
-            $this->line($status['status'] ?? '...');
-        });
-
-        $this->info('Done!');
+        return response()->json([
+            'answer' => AI::rag()->ask($request->question),
+        ]);
     }
 }
 ```
 
-```bash
-php artisan ai:pull llama3.1:8b
+### RAG Configuration
+
+```php
+'rag' => [
+    'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
+    'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
+    'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null),  // null = use AI_PROVIDER default
+    'chunk_size'     => (int) env('AI_RAG_CHUNK_SIZE', 2000),
+    'top_k'          => (int) env('AI_RAG_TOP_K', 3),
+    'table'          => env('AI_RAG_TABLE', 'ai_documents'),
+    'system_prompt'  => env('AI_RAG_SYSTEM_PROMPT', 'Answer using ONLY the context below. If unsure, say so.'),
+],
 ```
+
+| `.env` Key | Default | Description |
+|------------|---------|-------------|
+| `AI_RAG_PROVIDER` | `ollama` | Provider for generating embeddings |
+| `AI_RAG_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `AI_RAG_CHAT_PROVIDER` | `null` (uses default) | Provider for chat in `ask()` |
+| `AI_RAG_CHUNK_SIZE` | `2000` | Max characters per chunk |
+| `AI_RAG_TOP_K` | `3` | Chunks to retrieve per query |
+| `AI_RAG_TABLE` | `ai_documents` | Database table name |
 
 ---
 
@@ -632,28 +526,6 @@ public function summarize(Request $request)
     ]);
 
     return response()->json(['summary' => $response->content]);
-}
-```
-
-### AI Data Extractor (Structured Output)
-
-```php
-public function extractContact(Request $request)
-{
-    $response = AI::provider('ollama')
-        ->format([
-            'type' => 'object',
-            'properties' => [
-                'name'  => ['type' => 'string'],
-                'email' => ['type' => 'string'],
-                'phone' => ['type' => 'string'],
-            ],
-            'required' => ['name'],
-        ])
-        ->systemPrompt('Extract contact info from the text. Return JSON only.')
-        ->chat([['role' => 'user', 'content' => $request->text]]);
-
-    return response()->json(json_decode($response->content, true));
 }
 ```
 
@@ -1134,6 +1006,7 @@ Route::get('/debug-ollama', function () {
 | `AI::chat(array $messages)` | `AIResponse` | Send chat with default provider |
 | `AI::provider(string $name)` | `AIProvider` | Switch to a specific provider |
 | `AI::estimateTokens(string\|array $input)` | `int` | Estimate token count offline |
+| `AI::rag()` | `RAGManager` | Access the built-in RAG system |
 
 ### Provider Methods (Chainable)
 
@@ -1144,25 +1017,10 @@ Route::get('/debug-ollama', function () {
 | `->maxTokens(500)` | Limit response length |
 | `->systemPrompt('...')` | Set AI persona/instructions |
 | `->timeout(30)` | Set request timeout in seconds |
-| `->keepAlive('30m')` | 🆕 Model memory duration (Ollama) |
-| `->format('json')` | 🆕 Force JSON output |
-| `->format([...schema])` | 🆕 Structured output with JSON schema |
-| `->options([...])` | 🆕 Custom provider options (top_p, seed, etc.) |
 | `->chat(array $messages)` | Send and get response |
 | `->stream(array $messages, callable $fn)` | Stream response in real-time |
-| `->embed(string\|array $input)` | 🆕 Generate vector embeddings |
 | `->health()` | Check if provider is online |
 | `->models()` | List available models |
-
-### Ollama-Only Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `->showModel('name')` | `array` | Model details (size, parameters, template) |
-| `->pullModel('name', $callback)` | `bool` | Download a model with progress callback |
-| `->deleteModel('name')` | `bool` | Remove a local model |
-| `->copyModel('source', 'dest')` | `bool` | Copy/alias a model |
-| `->runningModels()` | `array` | List loaded models with VRAM usage |
 
 ### Response Object
 
@@ -1220,12 +1078,11 @@ return [
     'providers' => [
 
         'ollama' => [
-            'driver'     => 'ollama',
-            'url'        => env('AI_OLLAMA_URL', 'http://127.0.0.1:11434'),
-            'model'      => env('AI_OLLAMA_MODEL', 'qwen2:1.5b'),
-            'timeout'    => (int) env('AI_OLLAMA_TIMEOUT', 120),
-            'keep_alive' => env('AI_OLLAMA_KEEP_ALIVE', '5m'),  // 🆕 model memory
-            'options'    => ['temperature' => 0.7],
+            'driver'  => 'ollama',
+            'url'     => env('AI_OLLAMA_URL', 'http://127.0.0.1:11434'),
+            'model'   => env('AI_OLLAMA_MODEL', 'qwen2:1.5b'),
+            'timeout' => (int) env('AI_OLLAMA_TIMEOUT', 120),
+            'options' => ['temperature' => 0.7],
         ],
 
         'openai' => [
@@ -1281,7 +1138,6 @@ AI_PROVIDER=ollama
 AI_OLLAMA_URL=http://127.0.0.1:11434
 AI_OLLAMA_MODEL=qwen2:1.5b
 AI_OLLAMA_TIMEOUT=120
-AI_OLLAMA_KEEP_ALIVE=5m
 
 # OpenAI (ChatGPT)
 AI_OPENAI_KEY=sk-proj-xxxx
@@ -1297,6 +1153,22 @@ AI_ANTHROPIC_TIMEOUT=60
 AI_DEEPSEEK_KEY=sk-xxxx
 AI_DEEPSEEK_MODEL=deepseek-chat
 AI_DEEPSEEK_TIMEOUT=60
+
+# RAG (built-in)
+AI_RAG_PROVIDER=ollama
+AI_RAG_EMBED_MODEL=nomic-embed-text
+AI_RAG_CHAT_PROVIDER=ollama
+AI_RAG_CHUNK_SIZE=2000
+AI_RAG_TOP_K=3
+AI_RAG_TABLE=ai_documents
+
+# RAG (built-in)
+AI_RAG_PROVIDER=ollama
+AI_RAG_EMBED_MODEL=nomic-embed-text
+AI_RAG_CHAT_PROVIDER=ollama
+AI_RAG_CHUNK_SIZE=2000
+AI_RAG_TOP_K=3
+AI_RAG_TABLE=ai_documents
 
 # Logging (optional)
 AI_LOG_ENABLED=false
@@ -1376,16 +1248,111 @@ $this->assertEquals('Mocked response', $response->content);
 
 ---
 
+## 🧠 RAG (Built-in)
+
+LaravelAI includes a built-in RAG (Retrieval-Augmented Generation) system. Store documents as embeddings, search by similarity, and let AI answer questions using your own data — no external vector database needed.
+
+### Setup
+
+```bash
+# 1. Pull an embedding model (Ollama)
+ollama pull nomic-embed-text
+
+# 2. Migrations run automatically — just run:
+php artisan migrate
+```
+
+Add to `.env`:
+
+```env
+AI_RAG_PROVIDER=ollama
+AI_RAG_EMBED_MODEL=nomic-embed-text
+AI_RAG_CHAT_PROVIDER=ollama
+```
+
+### Ingest Documents
+
+```php
+use EasyAI\LaravelAI\Facades\AI;
+
+// Ingest a string
+AI::rag()->ingest('Laravel is a PHP framework using MVC pattern.', 'docs');
+
+// Ingest via Artisan command
+// php artisan ai:rag:ingest storage/docs/manual.txt --source=manual
+// php artisan ai:rag:ingest storage/docs/ --flush
+```
+
+### Ask Questions
+
+```php
+$answer = AI::rag()->ask('What is Laravel?');
+// "Laravel is a PHP framework using MVC pattern..."
+```
+
+### Search (without AI)
+
+```php
+// Returns top-K relevant chunks with similarity scores
+$results = AI::rag()->search('MVC pattern');
+// [['content' => '...', 'source' => 'docs', 'score' => 0.91]]
+```
+
+### Flush All Documents
+
+```php
+AI::rag()->flush();
+```
+
+### RAG in a Controller
+
+```php
+class DocsController extends Controller
+{
+    public function ask(Request $request)
+    {
+        $request->validate(['question' => 'required|string']);
+
+        return response()->json([
+            'answer' => AI::rag()->ask($request->question),
+        ]);
+    }
+}
+```
+
+### RAG Configuration
+
+```php
+'rag' => [
+    'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
+    'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
+    'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null),
+    'chunk_size'     => (int) env('AI_RAG_CHUNK_SIZE', 2000),
+    'top_k'          => (int) env('AI_RAG_TOP_K', 3),
+    'table'          => env('AI_RAG_TABLE', 'ai_documents'),
+    'system_prompt'  => env('AI_RAG_SYSTEM_PROMPT', 'Answer using ONLY the context below. If unsure, say so.'),
+],
+```
+
+| `.env` Key | Default | Description |
+|------------|---------|-------------|
+| `AI_RAG_PROVIDER` | `ollama` | Provider for generating embeddings |
+| `AI_RAG_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `AI_RAG_CHAT_PROVIDER` | `null` (uses default) | Provider for chat in `ask()` |
+| `AI_RAG_CHUNK_SIZE` | `2000` | Max characters per chunk |
+| `AI_RAG_TOP_K` | `3` | Chunks to retrieve per query |
+| `AI_RAG_TABLE` | `ai_documents` | Database table name |
+
+---
+
 ## 🗺️ Roadmap
 
 | Version | Feature | Status |
 |---------|---------|--------|
 | v1.0 | Ollama, OpenAI, Anthropic, DeepSeek | ✅ Released |
 | v1.1 | Laravel 12 & 13 support | ✅ Released |
-| v1.2 | Embeddings, JSON mode, Structured outputs | ✅ Released |
-| v1.2 | keep_alive, Custom options, Model management | ✅ Released |
+| v1.2 | Built-in RAG system (embed, ingest, search, ask) | ✅ Released |
 | v2.0 | Function/Tool calling | 🔜 Planned |
-| v2.0 | Vision / Image input support | 🔜 Planned |
 | v2.1 | Groq driver | 🔜 Planned |
 | v2.1 | Google Gemini driver | 🔜 Planned |
 | v2.2 | Response caching | 🔜 Planned |

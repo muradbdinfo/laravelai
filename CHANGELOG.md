@@ -1,183 +1,76 @@
-═══════════════════════════════════════════════════════════════
-  LaravelAI v1.2.0 — Ollama Enrichment Guide
-  What Changed, Where, and How to Use It
-═══════════════════════════════════════════════════════════════
+# Changelog
 
-FILES MODIFIED (5):
-───────────────────
-1. src/Contracts/AIProviderInterface.php  — 3 new methods added
-2. src/Drivers/AbstractDriver.php         — 3 new properties + setters + embed() stub
-3. src/Drivers/OllamaDriver.php           — embed, format, keep_alive, options, model mgmt
-4. src/Facades/AI.php                     — 3 new @method annotations
-5. config/ai.php                          — added keep_alive for ollama
+## v1.2.5 — 2026-05-07
 
+- fix: explicitly set chat model in `ask()` to prevent embed model bleeding over from previous `embed()` call
+- fix: move `rag` config block outside `providers` array
 
-═══════════════════════════════════════════════════════════════
-  FEATURE 1: JSON Mode & Structured Outputs
-═══════════════════════════════════════════════════════════════
+## v1.2.4 — 2026-05-07
 
-WHY:  Get predictable JSON from AI instead of random text.
-API:  Ollama's `format` parameter in /api/chat
+- fix: remove RAGManager constructor — use lazy `config()` calls so config is always available at runtime
+- fix: move RAGManager singleton registration to `boot()` instead of `register()`
 
-USAGE — JSON Mode:
-    $response = AI::provider('ollama')
-        ->format('json')
-        ->systemPrompt('Return JSON with keys: name, age')
-        ->chat([['role' => 'user', 'content' => 'Tell me about Messi']]);
+## v1.2.3 — 2026-05-07
 
-    $data = json_decode($response->content, true);
-    // ['name' => 'Lionel Messi', 'age' => 38]
+- fix: RAGManager singleton registered too early before config was merged
 
-USAGE — Structured Output (with schema):
-    $response = AI::provider('ollama')
-        ->format([
-            'type' => 'object',
-            'properties' => [
-                'name'     => ['type' => 'string'],
-                'capital'  => ['type' => 'string'],
-                'languages'=> ['type' => 'array', 'items' => ['type' => 'string']],
-            ],
-            'required' => ['name', 'capital', 'languages'],
-        ])
-        ->chat([['role' => 'user', 'content' => 'Tell me about Bangladesh']]);
+## v1.2.2 — 2026-05-07
 
-    $country = json_decode($response->content, true);
-    // ['name' => 'Bangladesh', 'capital' => 'Dhaka', 'languages' => ['Bengali']]
+### Built-in RAG System 🧠
 
-REAL-WORLD: Product extraction, form filling, API responses, data parsing
+- **`AI::rag()->ingest(string $content, string $source)`** — chunk text and store as embeddings
+- **`AI::rag()->ask(string $question)`** — answer questions using retrieved context
+- **`AI::rag()->search(string $query)`** — return top-K most relevant chunks with cosine similarity scores
+- **`AI::rag()->flush()`** — clear all stored documents
+- **`php artisan ai:rag:ingest {path}`** — ingest files or directories from CLI
+- Auto-migration for `ai_documents` table via `loadMigrationsFrom`
+- Cosine similarity search (no external vector DB required — works with MySQL/SQLite)
+- All RAG settings configurable via `.env` (`AI_RAG_PROVIDER`, `AI_RAG_EMBED_MODEL`, `AI_RAG_CHUNK_SIZE`, `AI_RAG_TOP_K`, `AI_RAG_TABLE`)
 
+## v1.2.1 — 2026-05-04
 
-═══════════════════════════════════════════════════════════════
-  FEATURE 2: Embeddings
-═══════════════════════════════════════════════════════════════
+- fix: restore AI Facade class (was overwritten by config content)
+- fix: composer.json PHP/Laravel version constraints
 
-WHY:  Build RAG apps, semantic search, similarity matching.
-API:  Ollama's /api/embed endpoint
+## v1.2.0 — 2026-05-04
 
-SETUP: Pull an embedding model first:
-    ollama pull nomic-embed-text
+### Ollama Enrichment Features
 
-USAGE — Single:
-    $vectors = AI::provider('ollama')
-        ->model('nomic-embed-text')
-        ->embed('Laravel is a PHP framework');
-    // Returns: [[0.0123, -0.0456, 0.0789, ...]]
+- **Embeddings** — `->embed(string|array $input)` generates vector embeddings via Ollama `/api/embed`
+- **JSON mode** — `->format('json')` forces structured JSON output
+- **Structured outputs** — `->format(array $schema)` enforces a JSON schema
+- **Keep-alive** — `->keepAlive('5m')` controls how long model stays loaded in memory
+- **Custom options** — `->options(['num_ctx' => 4096])` passes any Ollama parameter
+- **Correct token mapping** — `maxTokens()` now maps to `num_predict` (Ollama's correct field)
+- **Model management** — `showModel()`, `pullModel()`, `deleteModel()`, `copyModel()`, `runningModels()`
 
-USAGE — Batch:
-    $vectors = AI::provider('ollama')
-        ->model('nomic-embed-text')
-        ->embed(['Laravel is great', 'Vue.js is reactive', 'PHP is powerful']);
-    // Returns: [[...], [...], [...]]  — one vector per input
+## v1.1.2 — 2026-05-02
 
-REAL-WORLD: Store vectors in pgvector/Milvus, find similar documents
+- Laravel 13 support added
+- PHP 8.4 / 8.5 explicit support
+- README updated with video tutorials
 
+## v1.1.1 — 2026-05-01
 
-═══════════════════════════════════════════════════════════════
-  FEATURE 3: keep_alive
-═══════════════════════════════════════════════════════════════
+- Minor README and SEO improvements
 
-WHY:  Control model memory. Faster responses = keep loaded. Save RAM = unload fast.
-API:  Ollama's `keep_alive` parameter
+## v1.1.0 — 2026-05-01
 
-USAGE:
-    // Keep loaded 30 minutes (faster repeat calls)
-    AI::provider('ollama')->keepAlive('30m')->chat($messages);
+- Laravel 12 support
+- Improved error handling with `ConnectionException` and `ProviderException`
+- Health check improvements
 
-    // Keep permanently loaded (never unload)
-    AI::provider('ollama')->keepAlive(-1)->chat($messages);
+## v1.0.0 — 2026-05-01
 
-    // Unload immediately after response (save RAM)
-    AI::provider('ollama')->keepAlive(0)->chat($messages);
-
-    // Also works with embeddings
-    AI::provider('ollama')->model('nomic-embed-text')->keepAlive('1h')->embed($text);
-
-CONFIG DEFAULT: Set in config/ai.php → providers.ollama.keep_alive
-ENV: AI_OLLAMA_KEEP_ALIVE=5m
-
-
-═══════════════════════════════════════════════════════════════
-  FEATURE 4: Custom Options
-═══════════════════════════════════════════════════════════════
-
-WHY:  Fine-tune generation beyond just temperature.
-API:  Ollama's `options` object
-
-USAGE:
-    $response = AI::provider('ollama')
-        ->temperature(0.8)
-        ->maxTokens(500)           // ← now maps to num_predict correctly!
-        ->options([
-            'top_p'          => 0.9,
-            'top_k'          => 40,
-            'seed'           => 42,    // reproducible outputs
-            'repeat_penalty' => 1.1,
-            'num_ctx'        => 4096,  // context window size
-        ])
-        ->chat($messages);
-
-NOTE: maxTokens() previously did nothing for Ollama. Now it maps to num_predict.
-      options() merges with config defaults — your call overrides config.
-
-
-═══════════════════════════════════════════════════════════════
-  FEATURE 5: Model Management (Ollama-only)
-═══════════════════════════════════════════════════════════════
-
-WHY:  Manage Ollama models from your Laravel app. No CLI needed.
-
-USAGE:
-    $ollama = AI::provider('ollama');
-
-    // Show model details
-    $info = $ollama->showModel('llama3.1:8b');
-    // Returns: template, parameters, size, family, quantization...
-
-    // Pull/download a model (with progress)
-    $ollama->pullModel('qwen2:1.5b', function ($status) {
-        echo $status['status'];  // "downloading", "verifying", "success"
-        if (isset($status['completed'], $status['total'])) {
-            $pct = round($status['completed'] / $status['total'] * 100);
-            echo " {$pct}%";
-        }
-    });
-
-    // Delete a model
-    $ollama->deleteModel('old-model:latest');
-
-    // Copy/alias a model
-    $ollama->copyModel('llama3.1:8b', 'my-assistant:latest');
-
-    // List currently loaded models (with VRAM info)
-    $running = $ollama->runningModels();
-    // [['name' => 'llama3.1:8b', 'size' => 4683075271, ...]]
-
-
-═══════════════════════════════════════════════════════════════
-  HOW TO APPLY THESE CHANGES TO YOUR REPO
-═══════════════════════════════════════════════════════════════
-
-Step 1: Replace these files in your repo:
-   - src/Contracts/AIProviderInterface.php
-   - src/Drivers/AbstractDriver.php
-   - src/Drivers/OllamaDriver.php
-   - src/Facades/AI.php
-   - config/ai.php
-   - CHANGELOG.md
-
-Step 2: Add new README sections (see README-NEW-FEATURES.md)
-
-Step 3: Update composer.json version if needed
-
-Step 4: Run tests:
-   vendor/bin/phpunit
-
-Step 5: Commit, tag, push:
-   git add -A
-   git commit -m "feat: v1.2.0 — Ollama enrichment (embeddings, JSON mode, keep_alive, options, model management)"
-   git tag v1.2.0
-   git push origin main --tags
-
-
-
-═══════════════════════════════════════════════════════════════
+- Initial release
+- Ollama driver (chat, stream, health, models)
+- OpenAI driver (ChatGPT)
+- Anthropic driver (Claude)
+- DeepSeek driver (OpenAI-compatible)
+- Unified `AIResponse` object
+- Token estimation
+- Streaming support (SSE) for all providers
+- Laravel Facade (`AI::`) + global `ai()` helper
+- Custom driver extension via `AI::extend()`
+- Config publishing via `vendor:publish --tag=ai-config`
+- PHPUnit tests with HTTP mocking via Orchestra Testbench
