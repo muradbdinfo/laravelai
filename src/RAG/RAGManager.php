@@ -22,16 +22,20 @@ class RAGManager
         return $count;
     }
 
-    public function ask(string $question): string
-    {
-        $context  = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
-        $provider = config('ai.rag.chat_provider') ?? config('ai.default');
-        $ai       = AI::provider($provider);
-        if ($context) {
-            $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
-        }
-        return $ai->chat([['role' => 'user', 'content' => $question]])->content;
+public function ask(string $question): string
+{
+    $context  = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
+    $provider = config('ai.rag.chat_provider') ?? config('ai.default');
+    
+    $ai = AI::provider($provider)
+        ->model(config("ai.providers.{$provider}.model")); // ← force chat model
+
+    if ($context) {
+        $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
     }
+
+    return $ai->chat([['role' => 'user', 'content' => $question]])->content;
+}
 
     public function search(string $query): array
     {
