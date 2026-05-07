@@ -51,6 +51,18 @@ return [
                 'max_tokens'  => 2000,
             ],
         ],
+
+'rag' => [
+'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
+'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
+'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null), // null = use default
+'chunk_size'     => (int) env('AI_RAG_CHUNK_SIZE', 2000),
+'top_k'          => (int) env('AI_RAG_TOP_K', 3),
+'table'          => env('AI_RAG_TABLE', 'ai_documents'),
+'system_prompt'  => env('AI_RAG_SYSTEM_PROMPT', 'Answer using ONLY the context below. If unsure, say so.'),
+],
+
+
     ],
 
     'logging' => [

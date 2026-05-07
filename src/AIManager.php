@@ -71,4 +71,10 @@ class AIManager extends Manager
 
         return TokenEstimator::estimateMessages($input);
     }
+
+    public function rag(): \EasyAI\LaravelAI\RAG\RAGManager
+{
+    return $this->container->make(\EasyAI\LaravelAI\RAG\RAGManager::class);
+}
+
 }
