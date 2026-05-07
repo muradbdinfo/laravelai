@@ -26,9 +26,11 @@ public function ask(string $question): string
 {
     $context  = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
     $provider = config('ai.rag.chat_provider') ?? config('ai.default');
-    
-    $ai = AI::provider($provider)
-        ->model(config("ai.providers.{$provider}.model")); // ← force chat model
+
+    // Explicitly set chat model to avoid embed model bleeding over
+    $chatModel = config("ai.providers.{$provider}.model");
+
+    $ai = AI::provider($provider)->model($chatModel);
 
     if ($context) {
         $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
