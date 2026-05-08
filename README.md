@@ -23,11 +23,11 @@
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
+  <a href="#-built-in-chat-ui">Chat UI</a> •
   <a href="#-providers">Providers</a> •
   <a href="#-features">Features</a> •
   <a href="#-rag-built-in">RAG</a> •
   <a href="#-real-world-examples">Examples</a> •
-  <a href="#-chat-application-integration">Chat App</a> •
   <a href="#-api-reference">API Reference</a> •
   <a href="#-configuration">Configuration</a>
 </p>
@@ -42,9 +42,9 @@
 
 <table>
   <tr>
-    <td align="center" width="50%">
+    <td align="center" width="33%">
       <a href="https://youtu.be/m_HyTIBRAOE">
-        <img src="https://img.youtube.com/vi/m_HyTIBRAOE/maxresdefault.jpg" 
+        <img src="https://img.youtube.com/vi/m_HyTIBRAOE/maxresdefault.jpg"
              alt="How to make self hosted AI Server" width="100%">
         <br><br>
         <strong>🖥️ How to Make Self-Hosted AI Server</strong>
@@ -52,15 +52,25 @@
       <br>
       <sub>Step-by-step guide to setting up your own local AI server with Ollama</sub>
     </td>
-    <td align="center" width="50%">
+    <td align="center" width="33%">
       <a href="https://youtu.be/pSwewtXqgP8">
-        <img src="https://img.youtube.com/vi/pSwewtXqgP8/maxresdefault.jpg" 
+        <img src="https://img.youtube.com/vi/pSwewtXqgP8/maxresdefault.jpg"
              alt="Laravel AI Package Implement" width="100%">
         <br><br>
         <strong>🚀 Laravel AI Package Implementation</strong>
       </a>
       <br>
       <sub>How to install and use LaravelAI package in your Laravel project</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://youtu.be/pSwewtXqgP8">
+        <img src="https://img.youtube.com/vi/pSwewtXqgP8/maxresdefault.jpg"
+             alt="Built-in Chat UI" width="100%">
+        <br><br>
+        <strong>💬 Built-in Chat UI</strong>
+      </a>
+      <br>
+      <sub>Zero-setup ChatGPT-like app included</sub>
     </td>
   </tr>
 </table>
@@ -152,6 +162,82 @@ php artisan tinker
 
 ---
 
+## 💬 Built-in Chat UI
+
+> **New in v1.3.0** — A full ChatGPT-like chat application included out of the box. Zero setup required.
+
+Install the package and visit `/ai-chat` — that's it.
+
+### What you get automatically
+
+- ChatGPT-like sidebar with conversation history
+- Create, switch, and delete chat sessions
+- Streaming responses with real-time typing effect
+- Full Markdown rendering with syntax-highlighted code blocks
+- Copy button per message and per code block
+- Live provider switcher — switch between Ollama, OpenAI, Claude, DeepSeek from the UI
+- Database-persisted conversation history (survives page refresh and server restart)
+- Auto-title: first message becomes the session title automatically
+- Offline-safe assets — no CDN dependency
+
+### Setup (3 commands)
+
+```bash
+# 1. Publish JS/CSS assets for offline use
+php artisan vendor:publish --tag=ai-chat-assets
+
+# 2. Run migrations (creates chat_sessions + chat_messages tables)
+php artisan migrate
+
+# 3. Visit your chat UI
+# http://your-app.test/ai-chat
+```
+
+> Migrations and routes load **automatically** — no `AppServiceProvider` changes needed.
+
+### Customize the UI
+
+```bash
+# Copy views to your app for full customization
+php artisan vendor:publish --tag=ai-chat-views
+# → resources/views/vendor/laravelai/chat.blade.php
+```
+
+Laravel checks your published view first, falls back to the package view — standard vendor override pattern.
+
+### Routes registered automatically
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/ai-chat` | Chat UI |
+| POST | `/ai-chat/api/sessions` | Create new session |
+| DELETE | `/ai-chat/api/sessions/{id}` | Delete session |
+| GET | `/ai-chat/api/stream` | SSE streaming endpoint |
+| POST | `/ai-chat/api/provider` | Switch active provider |
+
+### Switch providers from the UI
+
+The sidebar includes a live dropdown to switch between providers without touching `.env`. The selected provider is stored in the session.
+
+```env
+# Configure all providers you want available
+AI_PROVIDER=ollama          # default
+
+AI_OLLAMA_URL=http://127.0.0.1:11434
+AI_OLLAMA_MODEL=qwen2:1.5b
+
+AI_OPENAI_KEY=sk-...
+AI_OPENAI_MODEL=gpt-4o-mini
+
+AI_ANTHROPIC_KEY=sk-ant-...
+AI_ANTHROPIC_MODEL=claude-3-haiku-20240307
+
+AI_DEEPSEEK_KEY=sk-...
+AI_DEEPSEEK_MODEL=deepseek-chat
+```
+
+---
+
 ## 🤖 Providers
 
 LaravelAI supports 4 providers out of the box. Set up as many as you need.
@@ -233,7 +319,6 @@ $response = AI::provider('ollama')
 ### 2. System Prompts — Give AI a Persona
 
 ```php
-// Make it a pirate
 $response = AI::systemPrompt('You are a pirate captain. Always talk like a pirate.')
     ->chat([['role' => 'user', 'content' => 'Tell me about PHP']]);
 
@@ -251,8 +336,6 @@ $response = AI::chat([
     ['role' => 'assistant', 'content' => '2+2 equals 4.'],
     ['role' => 'user', 'content' => 'Now multiply that by 10'],
 ]);
-
-// "4 multiplied by 10 equals 40."
 ```
 
 ### 4. Streaming — Real-Time Output
@@ -263,7 +346,7 @@ Get tokens as they are generated, just like ChatGPT typing effect:
 AI::provider('ollama')->stream(
     [['role' => 'user', 'content' => 'Write a poem about coding']],
     function (string $chunk) {
-        echo $chunk; // Each word appears in real-time
+        echo $chunk;
     }
 );
 ```
@@ -271,7 +354,6 @@ AI::provider('ollama')->stream(
 **Use in Laravel HTTP response (SSE):**
 
 ```php
-// In your Controller
 public function stream(Request $request)
 {
     return response()->stream(function () use ($request) {
@@ -293,13 +375,10 @@ public function stream(Request $request)
 
 ### 5. Health Check
 
-Check if a provider is online before sending requests:
-
 ```php
 if (AI::provider('ollama')->health()) {
     $response = AI::chat($messages);
 } else {
-    // Fallback to another provider
     $response = AI::provider('openai')->chat($messages);
 }
 ```
@@ -308,7 +387,7 @@ if (AI::provider('ollama')->health()) {
 
 ```php
 $models = AI::provider('ollama')->models();
-// ['qwen2:1.5b', 'qwen2:1.5b', 'phi3:mini']
+// ['qwen2:1.5b', 'phi3:mini']
 
 $models = AI::provider('openai')->models();
 // ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', ...]
@@ -319,11 +398,9 @@ $models = AI::provider('openai')->models();
 Estimate token count **before** sending to AI — no API call needed:
 
 ```php
-// Estimate a string
 $tokens = AI::estimateTokens('Hello world, how are you?');
 // 8
 
-// Estimate a full conversation
 $tokens = AI::estimateTokens([
     ['role' => 'system', 'content' => 'You are helpful.'],
     ['role' => 'user', 'content' => 'Explain PHP in 100 words'],
@@ -331,9 +408,34 @@ $tokens = AI::estimateTokens([
 // ~25
 ```
 
-### 8. Error Handling
+### 8. Ollama Advanced Features
 
-LaravelAI throws specific exceptions you can catch:
+```php
+// JSON / Structured output
+$response = AI::provider('ollama')
+    ->format('json')
+    ->chat([['role' => 'user', 'content' => 'List 3 fruits as JSON']]);
+
+// Embeddings
+$vector = AI::provider('ollama')->embed('Hello world');
+
+// Keep model in memory
+AI::provider('ollama')->keepAlive('10m')->chat($messages);
+
+// Custom Ollama options
+AI::provider('ollama')
+    ->options(['temperature' => 0.5, 'top_p' => 0.9])
+    ->chat($messages);
+
+// Model management
+AI::provider('ollama')->pullModel('llama3.1:8b');
+AI::provider('ollama')->showModel('qwen2:1.5b');
+AI::provider('ollama')->runningModels();
+AI::provider('ollama')->copyModel('qwen2:1.5b', 'my-model');
+AI::provider('ollama')->deleteModel('old-model');
+```
+
+### 9. Error Handling
 
 ```php
 use EasyAI\LaravelAI\Exceptions\ConnectionException;
@@ -342,12 +444,40 @@ use EasyAI\LaravelAI\Exceptions\ProviderException;
 try {
     $response = AI::provider('openai')->chat($messages);
 } catch (ConnectionException $e) {
-    // Provider is unreachable
     Log::error("AI connection failed: " . $e->getMessage());
 } catch (ProviderException $e) {
-    // API returned an error (401, 429, 500, etc.)
     Log::error("AI error [{$e->getProvider()}]: " . $e->getMessage());
 }
+```
+
+### 10. Custom Drivers
+
+```php
+// 1. Create your driver class
+class GroqDriver extends AbstractDriver
+{
+    public function getProviderName(): string { return 'groq'; }
+    public function chat(array $messages): AIResponseInterface { /* ... */ }
+    public function health(): bool { /* ... */ }
+    public function models(): array { /* ... */ }
+}
+
+// 2. Register in AppServiceProvider@boot
+AI::extend('groq', function ($config) {
+    return new GroqDriver($config);
+});
+
+// 3. Add config in config/ai.php
+'groq' => [
+    'driver'  => 'groq',
+    'api_key' => env('AI_GROQ_KEY'),
+    'url'     => 'https://api.groq.com/openai/v1',
+    'model'   => 'llama-3.1-70b-versatile',
+    'timeout' => 30,
+],
+
+// 4. Use it!
+AI::provider('groq')->chat($messages);
 ```
 
 ---
@@ -362,7 +492,7 @@ LaravelAI includes a built-in RAG (Retrieval-Augmented Generation) system — st
 # 1. Pull an embedding model
 ollama pull nomic-embed-text
 
-# 2. Run migrations — creates ai_documents table automatically
+# 2. Migrations run automatically — just run:
 php artisan migrate
 ```
 
@@ -381,8 +511,8 @@ AI_RAG_CHAT_PROVIDER=ollama
 AI::rag()->ingest('Laravel is a PHP framework using MVC pattern.', 'docs');
 
 // Ingest via Artisan
-php artisan ai:rag:ingest storage/docs/manual.txt --source=manual
-php artisan ai:rag:ingest storage/docs/ --flush
+// php artisan ai:rag:ingest storage/docs/manual.txt --source=manual
+// php artisan ai:rag:ingest storage/docs/ --flush
 ```
 
 ### Ask Questions
@@ -427,7 +557,7 @@ class DocsController extends Controller
 'rag' => [
     'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
     'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
-    'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null),  // null = use AI_PROVIDER default
+    'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null),
     'chunk_size'     => (int) env('AI_RAG_CHUNK_SIZE', 2000),
     'top_k'          => (int) env('AI_RAG_TOP_K', 3),
     'table'          => env('AI_RAG_TABLE', 'ai_documents'),
@@ -534,9 +664,7 @@ public function summarize(Request $request)
 ```php
 public function chatWithFallback(string $message): string
 {
-    $providers = ['ollama', 'deepseek', 'openai'];
-
-    foreach ($providers as $provider) {
+    foreach (['ollama', 'deepseek', 'openai'] as $provider) {
         try {
             if (!AI::provider($provider)->health()) continue;
 
@@ -545,7 +673,6 @@ public function chatWithFallback(string $message): string
                 ->content;
         } catch (\Throwable $e) {
             Log::warning("Provider {$provider} failed: {$e->getMessage()}");
-            continue;
         }
     }
 
@@ -558,16 +685,13 @@ public function chatWithFallback(string $message): string
 ```php
 class AskAI extends Command
 {
-    protected $signature = 'ai:ask {question}';
+    protected $signature   = 'ai:ask {question}';
     protected $description = 'Ask AI a question from terminal';
 
     public function handle()
     {
         $this->info('Thinking...');
-
-        $answer = ai($this->argument('question'));
-
-        $this->line($answer);
+        $this->line(ai($this->argument('question')));
     }
 }
 ```
@@ -579,7 +703,6 @@ php artisan ai:ask "What is dependency injection?"
 ### Use in Blade Template (via Controller)
 
 ```php
-// Controller
 public function about()
 {
     $tagline = ai('Write a 10-word tagline for a Laravel AI package');
@@ -588,411 +711,7 @@ public function about()
 ```
 
 ```html
-<!-- Blade -->
 <p class="tagline">{{ $tagline }}</p>
-```
-
----
-
-## 🤖 Chat Application Integration
-
-Complete AI chat interface built with LaravelAI + Ollama. Features dual-mode chat (normal + streaming) with a modern responsive UI.
-
-### 📁 File Structure
-
-```
-easyjobs/
-├── app/
-│   └── Http/
-│       └── Controllers/
-│           └── AIChatController.php      # Chat & Stream handlers
-├── resources/
-│   └── views/
-│       └── ai-test.blade.php             # Chat UI (HTML/CSS/JS)
-├── routes/
-│   └── web.php                           # Routes definition
-└── .env                                  # Ollama configuration
-```
-
-### ⚙️ Environment Configuration
-
-```env
-AI_PROVIDER=ollama
-AI_OLLAMA_URL=http://127.0.0.1:11434
-AI_OLLAMA_MODEL=qwen2:1.5b
-AI_OLLAMA_TIMEOUT=120
-```
-
-> **Note:** `127.0.0.1` for local Ollama. For remote server use `192.168.x.x` or appropriate IP.
-
-### 🎮 Step 1: Create Controller
-
-```bash
-php artisan make:controller AIChatController
-```
-
-**`app/Http/Controllers/AIChatController.php`**
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use EasyAI\LaravelAI\Facades\AI;
-use EasyAI\LaravelAI\Exceptions\ConnectionException;
-
-class AIChatController extends Controller
-{
-    /**
-     * Normal chat — returns full response with token stats.
-     */
-    public function chat(Request $request)
-    {
-        $request->validate([
-            'message' => 'required|string|max:2000'
-        ]);
-
-        try {
-            $response = AI::provider('ollama')
-                ->timeout(120)
-                ->chat([
-                    ['role' => 'user', 'content' => $request->message]
-                ]);
-
-            return response()->json([
-                'reply'  => $response->content,
-                'model'  => $response->model,
-                'tokens' => $response->totalTokens
-            ]);
-        } catch (ConnectionException $e) {
-            return response()->json([
-                'error'   => 'Ollama server connection failed',
-                'message' => $e->getMessage(),
-                'check'   => 'Run: ollama serve (ensure 127.0.0.1:11434 is accessible)'
-            ], 503);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error'   => 'AI request failed',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Streaming chat — Server-Sent Events (SSE) for real-time output.
-     */
-    public function stream(Request $request)
-    {
-        $request->validate(['message' => 'required|string']);
-
-        return response()->stream(function () use ($request) {
-            AI::provider('ollama')->stream(
-                [['role' => 'user', 'content' => $request->message]],
-                function (string $chunk) {
-                    echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
-                    ob_flush();
-                    flush();
-                }
-            );
-            echo "data: [DONE]\n\n";
-        }, 200, [
-            'Content-Type'  => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-        ]);
-    }
-}
-```
-
-### 🛣️ Step 2: Routes
-
-**`routes/web.php`**
-
-```php
-<?php
-
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AIChatController;
-
-// Public routes
-Route::get('/', fn () => view('welcome'));
-
-// AI Chat API
-Route::post('/ai/chat', [AIChatController::class, 'chat']);
-Route::get('/ai/stream', [AIChatController::class, 'stream']);
-
-// Chat UI
-Route::get('/ai-test', fn () => view('ai-test'));
-```
-
-### 🎨 Step 3: Chat UI (ai-test.blade.php)
-
-Create `resources/views/ai-test.blade.php`:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laravel AI Chat · Ollama Qwen2</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: linear-gradient(145deg, #f1f5f9 0%, #e6edf4 100%);
-            font-family: 'Inter', system-ui, sans-serif;
-            padding: 1.5rem; min-height: 100vh;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .chat-container {
-            max-width: 1100px; width: 100%;
-            background: rgba(255,255,255,0.92);
-            border-radius: 2rem;
-            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.25);
-            overflow: hidden;
-        }
-        .chat-header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            padding: 1.5rem 2rem; color: white;
-        }
-        .chat-header h1 {
-            font-size: 1.7rem; font-weight: 600;
-            display: flex; align-items: center; gap: 12px;
-        }
-        .badge-model {
-            background: rgba(255,255,255,0.2);
-            padding: 0.25rem 0.9rem; border-radius: 40px;
-            font-size: 0.75rem; font-family: monospace;
-        }
-        .sub {
-            font-size: 0.85rem; color: #cbd5e6;
-            margin-top: 8px; display: flex; gap: 20px;
-        }
-        .chat-panel { padding: 1.8rem 2rem 2rem; }
-        .input-group {
-            background: #fff; border-radius: 1.75rem;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.03);
-            border: 1px solid #e2e8f0;
-            transition: box-shadow 0.2s, border 0.2s;
-        }
-        .input-group:focus-within {
-            border-color: #818cf8;
-            box-shadow: 0 6px 18px rgba(99,102,241,0.15);
-        }
-        textarea {
-            width: 100%; border: none; padding: 1.2rem 1.5rem;
-            font-size: 1rem; background: transparent; resize: vertical;
-            border-radius: 1.75rem; outline: none; line-height: 1.5;
-            color: #0f172a;
-        }
-        .button-bar { display: flex; gap: 1rem; margin: 1rem 0 1.5rem; }
-        .btn {
-            border: none; padding: 0.7rem 1.8rem; border-radius: 3rem;
-            font-weight: 600; font-size: 0.9rem; cursor: pointer;
-            transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
-        }
-        .btn-primary {
-            background: #4f46e5; color: white;
-            box-shadow: 0 4px 10px rgba(79,70,229,0.25);
-        }
-        .btn-primary:hover { background: #4338ca; transform: translateY(-2px); }
-        .btn-outline {
-            background: white; border: 1px solid #cbd5e1; color: #1f2937;
-        }
-        .btn-outline:hover { background: #f8fafc; border-color: #818cf8; }
-        .response-area {
-            background: #fefefe; border-radius: 1.5rem;
-            border: 1px solid #eef2ff; overflow: hidden;
-        }
-        .response-header {
-            background: #f8fafd; padding: 0.9rem 1.5rem;
-            border-bottom: 1px solid #e9edf2;
-            font-size: 0.85rem; font-weight: 600; color: #334155;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .model-tag {
-            background: #eef2ff; padding: 0.2rem 0.7rem;
-            border-radius: 20px; font-size: 0.7rem;
-            font-family: monospace; color: #4f46e5;
-        }
-        .token-info { font-size: 0.7rem; background: #e9ecef; padding: 0.2rem 0.7rem; border-radius: 20px; }
-        .reply-content {
-            padding: 1.5rem; background: white;
-            font-size: 1rem; line-height: 1.55; color: #0f172a;
-            white-space: pre-wrap; word-break: break-word;
-            min-height: 160px; max-height: 450px; overflow-y: auto;
-        }
-        .chat-footer {
-            background: #f9fbfd; padding: 0.9rem 2rem;
-            border-top: 1px solid #e9edf2;
-            font-size: 0.7rem; color: #5b6e8c; text-align: center;
-        }
-        button:disabled { opacity: 0.6; cursor: not-allowed; }
-    </style>
-</head>
-<body>
-<div class="chat-container">
-    <div class="chat-header">
-        <h1>
-            <span>🤖 Laravel AI Chat</span>
-            <span class="badge-model">Ollama · qwen2:1.5b</span>
-        </h1>
-        <div class="sub">
-            <span>⚡ Local LLM (127.0.0.1:11434)</span>
-            <span>🔁 Streaming & Direct modes</span>
-        </div>
-    </div>
-    <div class="chat-panel">
-        <div class="input-group">
-            <textarea id="message" placeholder="Ask anything...">Tell me the history of Laravel Framework</textarea>
-        </div>
-        <div class="button-bar">
-            <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()">✨ Send</button>
-            <button class="btn btn-outline" id="streamBtn" onclick="streamMessage()">🌊 Stream</button>
-            <button class="btn" onclick="clearResponse()" style="background:#fff;border:1px solid #e2e8f0;">🧹 Clear</button>
-        </div>
-        <div class="response-area">
-            <div class="response-header">
-                <span>💬 AI Response <span class="model-tag" id="modelDisplay">qwen2:1.5b</span></span>
-                <span id="metaInfo" class="token-info">—</span>
-            </div>
-            <div class="reply-content" id="response">
-                <div style="color:#94a3b8;font-style:italic;">✨ Your answer will appear here...</div>
-            </div>
-        </div>
-    </div>
-    <div class="chat-footer">
-        ⚡ Powered by Laravel + Ollama (127.0.0.1:11434) | qwen2:1.5b
-    </div>
-</div>
-<script>
-    const csrfToken = '{{ csrf_token() }}';
-    let activeEventSource = null;
-
-    async function sendMessage() {
-        const msg = document.getElementById('message').value.trim();
-        if (!msg) { alert('Please enter a message'); return; }
-        document.getElementById('response').innerHTML = '<div>🤔 Thinking...</div>';
-        document.getElementById('sendBtn').disabled = true;
-        try {
-            const res = await fetch('/ai/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                body: JSON.stringify({ message: msg })
-            });
-            const data = await res.json();
-            if (data.error) throw new Error(data.message || data.error);
-            document.getElementById('modelDisplay').innerText = data.model || 'qwen2:1.5b';
-            document.getElementById('metaInfo').innerHTML = `🔢 tokens: ${data.tokens ?? 'N/A'}`;
-            document.getElementById('response').innerHTML = `<div>${escapeHtml(data.reply)}</div>`;
-        } catch (err) {
-            document.getElementById('response').innerHTML = `<div style="color:#b91c1c;">⚠️ ${err.message}</div>`;
-        } finally {
-            document.getElementById('sendBtn').disabled = false;
-        }
-    }
-
-    function streamMessage() {
-        if (activeEventSource) activeEventSource.close();
-        const msg = document.getElementById('message').value.trim();
-        if (!msg) { alert('Please enter a message'); return; }
-        document.getElementById('response').innerHTML = '';
-        document.getElementById('streamBtn').disabled = true;
-        let text = '';
-        const evtSource = new EventSource(`/ai/stream?message=${encodeURIComponent(msg)}`);
-        activeEventSource = evtSource;
-        evtSource.onmessage = (e) => {
-            if (e.data === '[DONE]') {
-                evtSource.close(); activeEventSource = null;
-                document.getElementById('streamBtn').disabled = false;
-                document.getElementById('metaInfo').innerHTML = `✅ Done · ${text.length} chars`;
-                return;
-            }
-            try {
-                const data = JSON.parse(e.data);
-                if (data.text) {
-                    text += data.text;
-                    document.getElementById('response').innerHTML = `<div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
-                }
-            } catch (err) {}
-        };
-        evtSource.onerror = () => {
-            evtSource.close(); activeEventSource = null;
-            document.getElementById('streamBtn').disabled = false;
-        };
-    }
-
-    function clearResponse() {
-        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
-        document.getElementById('response').innerHTML = '<div style="color:#94a3b8;font-style:italic;">✨ Ready for new input!</div>';
-        document.getElementById('metaInfo').innerText = '—';
-        document.getElementById('sendBtn').disabled = false;
-        document.getElementById('streamBtn').disabled = false;
-    }
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,'<br>');
-    }
-
-    document.getElementById('message').addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
-    });
-</script>
-</body>
-</html>
-```
-
-### 🚀 Step 4: Run & Test
-
-```bash
-# Terminal 1 — Start Ollama
-ollama serve
-
-# Terminal 2 — Start Laravel
-cd easyjobs
-php artisan serve
-```
-
-Visit: `http://localhost:8000/ai-test`
-
-#### Test Cases
-
-| Action | Expected Result |
-|--------|----------------|
-| Type message → **Send** | Full reply + token count |
-| Type message → **Stream** | Real-time word-by-word output |
-| **Clear** button | Resets response area |
-| Empty message | Alert: "Please enter a message" |
-| Ollama offline | Error: "Connection failed" |
-
-### 🔧 Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| **Loading stuck** | Check `curl http://127.0.0.1:11434/api/tags` |
-| **Connection refused** | Run `ollama serve` in terminal |
-| **Model not found** | Run `ollama pull qwen2:1.5b` |
-| **Slow first response** | qwen2:1.5b loads into memory; wait 10–30s |
-| **Config not loading** | Run `php artisan config:clear` |
-
-### Debug Route (Temporary)
-
-Add to `routes/web.php`:
-
-```php
-Route::get('/debug-ollama', function () {
-    try {
-        return response()->json([
-            'health' => AI::provider('ollama')->health(),
-            'models' => AI::provider('ollama')->models(),
-            'url'    => config('ai.providers.ollama.url'),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()]);
-    }
-});
 ```
 
 ---
@@ -1012,25 +731,39 @@ Route::get('/debug-ollama', function () {
 
 | Method | Description |
 |--------|-------------|
-| `->model('gpt-4o')` | Set the AI model |
-| `->temperature(0.7)` | Set creativity (0–2) |
-| `->maxTokens(500)` | Limit response length |
-| `->systemPrompt('...')` | Set AI persona/instructions |
-| `->timeout(30)` | Set request timeout in seconds |
-| `->chat(array $messages)` | Send and get response |
+| `->model($name)` | Set the AI model |
+| `->temperature($float)` | Set creativity (0–2) |
+| `->maxTokens($int)` | Max tokens in response |
+| `->systemPrompt($text)` | Set AI persona/instructions |
+| `->timeout($seconds)` | Request timeout |
+| `->chat(array $messages)` | Send and get full response |
 | `->stream(array $messages, callable $fn)` | Stream response in real-time |
 | `->health()` | Check if provider is online |
 | `->models()` | List available models |
 
-### Response Object
+### Ollama-Only Methods
 
-| Property / Method | Type | Description |
-|-------------------|------|-------------|
+| Method | Description |
+|--------|-------------|
+| `->format('json')` | Force JSON output |
+| `->embed($text)` | Generate vector embedding |
+| `->keepAlive($duration)` | Keep model loaded in memory |
+| `->options($array)` | Set raw Ollama options |
+| `->pullModel($name)` | Download a model |
+| `->showModel($name)` | Get model details |
+| `->deleteModel($name)` | Remove a model |
+| `->copyModel($src, $dst)` | Copy a model |
+| `->runningModels()` | List loaded models |
+
+### AIResponse Object
+
+| Property | Type | Description |
+|----------|------|-------------|
 | `$response->content` | `string` | The AI reply text |
+| `$response->model` | `string` | Model used |
 | `$response->promptTokens` | `int` | Tokens in your message |
-| `$response->completionTokens` | `int` | Tokens in AI reply |
+| `$response->replyTokens` | `int` | Tokens in AI reply |
 | `$response->totalTokens` | `int` | Total tokens used |
-| `$response->model` | `string` | Model that was used |
 | `$response->provider` | `string` | Provider name |
 | `$response->getRaw()` | `array` | Raw API response |
 | `$response->toArray()` | `array` | All data as array |
@@ -1039,40 +772,32 @@ Route::get('/debug-ollama', function () {
 ### Helper Function
 
 ```php
-// Basic — uses default provider
-ai('Your question here')
-
-// With provider
-ai('Your question', 'openai')
-
-// With provider and model
-ai('Your question', 'anthropic', 'claude-sonnet-4-20250514')
+ai('Your question here')                                        // default provider
+ai('Your question', 'openai')                                   // specific provider
+ai('Your question', 'anthropic', 'claude-3-haiku-20240307')    // provider + model
 ```
 
 ### Message Format
 
-All providers use the same message format:
-
 ```php
 $messages = [
-    ['role' => 'system', 'content' => 'Your instructions'],    // Optional
-    ['role' => 'user', 'content' => 'User message'],            // Required
-    ['role' => 'assistant', 'content' => 'Previous AI reply'],  // For context
-    ['role' => 'user', 'content' => 'Follow-up question'],
+    ['role' => 'system',    'content' => 'Your instructions'],   // optional
+    ['role' => 'user',      'content' => 'User message'],
+    ['role' => 'assistant', 'content' => 'Previous AI reply'],   // for context
+    ['role' => 'user',      'content' => 'Follow-up question'],
 ];
 ```
 
-> **Note:** Anthropic (Claude) handles system messages differently — LaravelAI converts the format automatically. You don't need to worry about it.
+> **Note:** Anthropic (Claude) handles system messages differently — LaravelAI converts the format automatically.
 
 ---
 
 ## ⚙️ Configuration
 
-Full `config/ai.php` reference:
+After publishing (`php artisan vendor:publish --tag=ai-config`), edit `config/ai.php`:
 
 ```php
 return [
-    // Default provider when calling AI::chat() without specifying one
     'default' => env('AI_PROVIDER', 'ollama'),
 
     'providers' => [
@@ -1114,16 +839,24 @@ return [
         ],
     ],
 
-    // Optional: log all AI requests
     'logging' => [
         'enabled' => (bool) env('AI_LOG_ENABLED', false),
         'channel' => env('AI_LOG_CHANNEL', 'stack'),
     ],
 
-    // Retry failed requests
     'retry' => [
         'times' => (int) env('AI_RETRY_TIMES', 2),
-        'sleep' => (int) env('AI_RETRY_SLEEP', 1000), // milliseconds
+        'sleep' => (int) env('AI_RETRY_SLEEP', 1000),
+    ],
+
+    'rag' => [
+        'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
+        'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
+        'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null),
+        'chunk_size'     => (int) env('AI_RAG_CHUNK_SIZE', 2000),
+        'top_k'          => (int) env('AI_RAG_TOP_K', 3),
+        'table'          => env('AI_RAG_TABLE', 'ai_documents'),
+        'system_prompt'  => env('AI_RAG_SYSTEM_PROMPT', 'Answer using ONLY the context below. If unsure, say so.'),
     ],
 ];
 ```
@@ -1162,56 +895,9 @@ AI_RAG_CHUNK_SIZE=2000
 AI_RAG_TOP_K=3
 AI_RAG_TABLE=ai_documents
 
-# RAG (built-in)
-AI_RAG_PROVIDER=ollama
-AI_RAG_EMBED_MODEL=nomic-embed-text
-AI_RAG_CHAT_PROVIDER=ollama
-AI_RAG_CHUNK_SIZE=2000
-AI_RAG_TOP_K=3
-AI_RAG_TABLE=ai_documents
-
 # Logging (optional)
 AI_LOG_ENABLED=false
 AI_LOG_CHANNEL=stack
-```
-
----
-
-## 🔌 Add Your Own Provider
-
-LaravelAI uses Laravel's Manager pattern — adding a custom provider is simple:
-
-```php
-// 1. Create your driver class
-class GroqDriver extends AbstractDriver
-{
-    public function getProviderName(): string { return 'groq'; }
-
-    public function chat(array $messages): AIResponseInterface
-    {
-        // Your implementation here
-    }
-
-    public function health(): bool { /* ... */ }
-    public function models(): array { /* ... */ }
-}
-
-// 2. Register in AppServiceProvider@boot
-AI::extend('groq', function ($config) {
-    return new GroqDriver($config);
-});
-
-// 3. Add config in config/ai.php providers
-'groq' => [
-    'driver'  => 'groq',
-    'api_key' => env('AI_GROQ_KEY'),
-    'url'     => 'https://api.groq.com/openai/v1',
-    'model'   => 'llama-3.1-70b-versatile',
-    'timeout' => 30,
-],
-
-// 4. Use it!
-AI::provider('groq')->chat($messages);
 ```
 
 ---
@@ -1234,114 +920,17 @@ use Illuminate\Support\Facades\Http;
 
 Http::fake([
     '127.0.0.1:11434/api/chat' => Http::response([
-        'message' => ['content' => 'Mocked response'],
-        'model' => 'qwen2:1.5b',
+        'message'           => ['content' => 'Mocked response'],
+        'model'             => 'qwen2:1.5b',
         'prompt_eval_count' => 10,
-        'eval_count' => 5,
-        'done' => true,
+        'eval_count'        => 5,
+        'done'              => true,
     ]),
 ]);
 
 $response = AI::chat([['role' => 'user', 'content' => 'Hi']]);
 $this->assertEquals('Mocked response', $response->content);
 ```
-
----
-
-## 🧠 RAG (Built-in)
-
-LaravelAI includes a built-in RAG (Retrieval-Augmented Generation) system. Store documents as embeddings, search by similarity, and let AI answer questions using your own data — no external vector database needed.
-
-### Setup
-
-```bash
-# 1. Pull an embedding model (Ollama)
-ollama pull nomic-embed-text
-
-# 2. Migrations run automatically — just run:
-php artisan migrate
-```
-
-Add to `.env`:
-
-```env
-AI_RAG_PROVIDER=ollama
-AI_RAG_EMBED_MODEL=nomic-embed-text
-AI_RAG_CHAT_PROVIDER=ollama
-```
-
-### Ingest Documents
-
-```php
-use EasyAI\LaravelAI\Facades\AI;
-
-// Ingest a string
-AI::rag()->ingest('Laravel is a PHP framework using MVC pattern.', 'docs');
-
-// Ingest via Artisan command
-// php artisan ai:rag:ingest storage/docs/manual.txt --source=manual
-// php artisan ai:rag:ingest storage/docs/ --flush
-```
-
-### Ask Questions
-
-```php
-$answer = AI::rag()->ask('What is Laravel?');
-// "Laravel is a PHP framework using MVC pattern..."
-```
-
-### Search (without AI)
-
-```php
-// Returns top-K relevant chunks with similarity scores
-$results = AI::rag()->search('MVC pattern');
-// [['content' => '...', 'source' => 'docs', 'score' => 0.91]]
-```
-
-### Flush All Documents
-
-```php
-AI::rag()->flush();
-```
-
-### RAG in a Controller
-
-```php
-class DocsController extends Controller
-{
-    public function ask(Request $request)
-    {
-        $request->validate(['question' => 'required|string']);
-
-        return response()->json([
-            'answer' => AI::rag()->ask($request->question),
-        ]);
-    }
-}
-```
-
-### RAG Configuration
-
-```php
-'rag' => [
-    'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
-    'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
-    'chat_provider'  => env('AI_RAG_CHAT_PROVIDER', null),
-    'chunk_size'     => (int) env('AI_RAG_CHUNK_SIZE', 2000),
-    'top_k'          => (int) env('AI_RAG_TOP_K', 3),
-    'table'          => env('AI_RAG_TABLE', 'ai_documents'),
-    'system_prompt'  => env('AI_RAG_SYSTEM_PROMPT', 'Answer using ONLY the context below. If unsure, say so.'),
-],
-```
-
-| `.env` Key | Default | Description |
-|------------|---------|-------------|
-| `AI_RAG_PROVIDER` | `ollama` | Provider for generating embeddings |
-| `AI_RAG_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
-| `AI_RAG_CHAT_PROVIDER` | `null` (uses default) | Provider for chat in `ask()` |
-| `AI_RAG_CHUNK_SIZE` | `2000` | Max characters per chunk |
-| `AI_RAG_TOP_K` | `3` | Chunks to retrieve per query |
-| `AI_RAG_TABLE` | `ai_documents` | Database table name |
 
 ---
 
@@ -1352,7 +941,10 @@ class DocsController extends Controller
 | v1.0 | Ollama, OpenAI, Anthropic, DeepSeek | ✅ Released |
 | v1.1 | Laravel 12 & 13 support | ✅ Released |
 | v1.2 | Built-in RAG system (embed, ingest, search, ask) | ✅ Released |
-| v2.0 | Function/Tool calling | 🔜 Planned |
+| v1.2 | Ollama: embeddings, JSON mode, model management | ✅ Released |
+| v1.3 | Built-in Chat UI — zero-setup ChatGPT-like app | ✅ Released |
+| v2.0 | Function / Tool calling | 🔜 Planned |
+| v2.0 | Vision / Image input | 🔜 Planned |
 | v2.1 | Groq driver | 🔜 Planned |
 | v2.1 | Google Gemini driver | 🔜 Planned |
 | v2.2 | Response caching | 🔜 Planned |
