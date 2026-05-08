@@ -36,7 +36,8 @@
     },
     "autoload": {
         "psr-4": {
-            "EasyAI\\LaravelAI\\": "src/"
+            "EasyAI\\LaravelAI\\": "src/",
+            "EasyAI\\LaravelAI\\Chat\\": "src/Chat/"
         },
         "files": [
             "src/helpers.php"
