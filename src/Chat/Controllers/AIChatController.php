@@ -115,13 +115,35 @@ class AIChatController extends Controller
                     $context = AI::rag()->source($source)->search($request->message);
 
                     if (!empty($context)) {
-                        $contextText = collect($context)->pluck('content')->join("\n\n---\n\n");
-                        array_unshift($history, [
-                            'role'    => 'system',
-                            'content' => config('ai.rag.system_prompt',
+                        // Truncate + sanitize context (remove angle brackets that confuse small models)
+                        $maxChunkLen = config('ai.rag.max_chunk_display', 800);
+                        $contextText = collect($context)
+                            ->pluck('content')
+                            ->map(function ($c) use ($maxChunkLen) {
+                                $c = mb_substr($c, 0, $maxChunkLen);
+                                // Flatten to single line — newlines inside JSON body break Ollama stream
+                                $c = str_replace(["
+", "
+", "
+", "	"], ' ', $c);
+                                $c = preg_replace('/\s{2,}/', ' ', $c); // collapse multiple spaces
+                                $c = str_replace(['<', '>'], ['[', ']'], $c); // angle brackets break qwen2
+                                return trim($c);
+                            })
+                            ->join("\n\n---\n\n");
+
+                        $systemPrompt = config('ai.rag.system_prompt',
                                             'Answer using ONLY the context below. If unsure, say so.')
-                                         . "\n\nCONTEXT:\n" . $contextText,
-                        ]);
+                                         . "\n\nCONTEXT:\n" . $contextText;
+
+                        // Prepend context to first user message instead of system role
+                        // qwen2/qwen2.5 on Ollama ignores system role messages silently
+                        foreach ($history as $i => $msg) {
+                            if ($msg['role'] === 'user') {
+                                $history[$i]['content'] = $systemPrompt . "\n\nQUESTION: " . $msg['content'];
+                                break;
+                            }
+                        }
                     }
                 } catch (\Throwable $e) {
                     // RAG failure non-fatal — stream continues without context
@@ -130,21 +152,45 @@ class AIChatController extends Controller
             // If docCount == 0: skip RAG entirely, chat normally
         }
 
-        return response()->stream(function () use ($session, $history, $provider) {
+        // Project RAG sessions use chat() — stream() is unreliable with RAG context on remote Ollama
+        $isProjectSession = $session->project_id !== null;
+
+        return response()->stream(function () use ($session, $history, $provider, $isProjectSession) {
             $fullReply = '';
 
             try {
-                AI::provider($provider)
-                    ->timeout(120)
-                    ->stream(
-                        $history,
-                        function (string $chunk) use (&$fullReply) {
-                            $fullReply .= $chunk;
-                            echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
-                            ob_flush();
-                            flush();
-                        }
-                    );
+                if ($isProjectSession) {
+                    // Use stream() with explicit model for RAG sessions
+                    $chatModel = config("ai.providers.{$provider}.model");
+                    if (empty($chatModel)) {
+                        $chatModel = 'qwen2.5-coder-fixed'; // hardcoded fallback
+                    }
+                    AI::provider($provider)
+                        ->model($chatModel)
+                        ->timeout(300)
+                        ->stream(
+                            $history,
+                            function (string $chunk) use (&$fullReply) {
+                                $fullReply .= $chunk;
+                                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                                ob_flush();
+                                flush();
+                            }
+                        );
+                } else {
+                    AI::provider($provider)
+                        ->timeout(120)
+                        ->stream(
+                            $history,
+                            function (string $chunk) use (&$fullReply) {
+                                $fullReply .= $chunk;
+                                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                                ob_flush();
+                                flush();
+                            }
+                        );
+                }
+
             } catch (ConnectionException $e) {
                 $msg = $provider === 'ollama'
                     ? 'Ollama not running. Start with: ollama serve'

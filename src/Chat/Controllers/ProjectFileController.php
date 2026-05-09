@@ -12,22 +12,25 @@ use Illuminate\Support\Facades\Storage;
 
 class ProjectFileController extends Controller
 {
-    public function index(Project $project)
+    public function index(Request $request, $project)
     {
-        return response()->json($project->files()->latest()->get());
+        $proj = Project::findOrFail($project);
+        return response()->json($proj->files()->latest()->get());
     }
 
-    public function store(Request $request, Project $project)
+    public function store(Request $request, $project)
     {
+        $proj = Project::findOrFail($project);
+
         $request->validate([
             'file' => 'required|file|mimes:txt,md,pdf|max:10240',
         ]);
 
         $uploadedFile = $request->file('file');
-        $path         = $uploadedFile->store('project-files/' . $project->id, 'local');
+        $path         = $uploadedFile->store('project-files/' . $proj->id, 'local');
 
         $pf = ProjectFile::create([
-            'project_id'    => $project->id,
+            'project_id'    => $proj->id,
             'original_name' => $uploadedFile->getClientOriginalName(),
             'stored_path'   => $path,
             'mime_type'     => $uploadedFile->getMimeType(),
@@ -41,20 +44,16 @@ class ProjectFileController extends Controller
                 throw new \RuntimeException('File is empty or could not be read.');
             }
 
-            $source = 'project_' . $project->id;
-
-            // Ingest — return value may be int or void depending on package version
+            $source = 'project_' . $proj->id;
             AI::rag()->ingest($text, $source);
 
-            // Verify chunks were actually stored
             $count = DB::table(config('ai.rag.table', 'ai_documents'))
                         ->where('source', $source)
                         ->count();
 
             if ($count === 0) {
                 throw new \RuntimeException(
-                    'Ingestion ran but no chunks were stored. ' .
-                    'Check that nomic-embed-text is running: ollama pull nomic-embed-text'
+                    'Ingestion ran but no chunks stored. Check nomic-embed-text is running.'
                 );
             }
 
@@ -71,10 +70,11 @@ class ProjectFileController extends Controller
         return response()->json($pf->fresh(), 201);
     }
 
-    public function destroy(Project $project, ProjectFile $file)
+    public function destroy(Request $request, $project, $file)
     {
-        Storage::disk('local')->delete($file->stored_path);
-        $file->delete();
+        $pf = ProjectFile::findOrFail($file);
+        Storage::disk('local')->delete($pf->stored_path);
+        $pf->delete();
         return response()->json(['ok' => true]);
     }
 

@@ -11,8 +11,7 @@ class ProjectController extends Controller
 {
     public function index()
     {
-        $projects = Project::withCount('files')->latest()->get();
-        return response()->json($projects);
+        return response()->json(Project::withCount('files')->latest()->get());
     }
 
     public function store(Request $request)
@@ -22,21 +21,20 @@ class ProjectController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
-        $project = Project::create($request->only('name', 'description'));
-
-        return response()->json($project, 201);
+        return response()->json(Project::create($request->only('name', 'description')), 201);
     }
 
-    public function destroy(Project $project)
+    public function destroy(Request $request, $project)
     {
-        // Remove all RAG vectors for this project
+        $proj = Project::findOrFail($project);
+
         try {
-            AI::rag()->flush('project_' . $project->id);
+            AI::rag()->flush('project_' . $proj->id);
         } catch (\Throwable $e) {
             // Non-fatal
         }
 
-        $project->delete(); // cascades to project_files and nulls chat_sessions.project_id
+        $proj->delete();
 
         return response()->json(['ok' => true]);
     }
