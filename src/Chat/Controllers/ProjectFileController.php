@@ -7,6 +7,7 @@ use EasyAI\LaravelAI\Chat\Models\ProjectFile;
 use EasyAI\LaravelAI\Facades\AI;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProjectFileController extends Controller
@@ -34,13 +35,36 @@ class ProjectFileController extends Controller
         ]);
 
         try {
-            $this->ingest($pf);
+            $text = $this->extractText($pf);
+
+            if (empty(trim($text))) {
+                throw new \RuntimeException('File is empty or could not be read.');
+            }
+
+            $source = 'project_' . $project->id;
+
+            // Ingest — return value may be int or void depending on package version
+            AI::rag()->ingest($text, $source);
+
+            // Verify chunks were actually stored
+            $count = DB::table(config('ai.rag.table', 'ai_documents'))
+                        ->where('source', $source)
+                        ->count();
+
+            if ($count === 0) {
+                throw new \RuntimeException(
+                    'Ingestion ran but no chunks were stored. ' .
+                    'Check that nomic-embed-text is running: ollama pull nomic-embed-text'
+                );
+            }
+
             $pf->update(['status' => 'ingested']);
+
         } catch (\Throwable $e) {
             $pf->update(['status' => 'failed']);
             return response()->json([
-                'file'  => $pf,
-                'error' => 'File saved but ingestion failed: ' . $e->getMessage(),
+                'file'  => $pf->fresh(),
+                'error' => $e->getMessage(),
             ], 422);
         }
 
@@ -51,29 +75,18 @@ class ProjectFileController extends Controller
     {
         Storage::disk('local')->delete($file->stored_path);
         $file->delete();
-
-        // Note: we don't delete individual chunks from ai_documents here
-        // because source is shared per project. Full project delete handles that.
-        // If you want per-file cleanup, store chunk IDs — future enhancement.
-
         return response()->json(['ok' => true]);
-    }
-
-    // ── Ingestion ────────────────────────────────────────────────────────
-
-    private function ingest(ProjectFile $file): void
-    {
-        $text   = $this->extractText($file);
-        $source = 'project_' . $file->project_id;
-        AI::rag()->ingest($text, $source);
     }
 
     private function extractText(ProjectFile $file): string
     {
         $fullPath = Storage::disk('local')->path($file->stored_path);
 
-        // PDF support — requires: composer require smalot/pdfparser
-        if ($file->mime_type === 'application/pdf') {
+        if (!file_exists($fullPath)) {
+            throw new \RuntimeException("Stored file not found at: {$fullPath}");
+        }
+
+        if (str_contains($file->mime_type, 'pdf')) {
             if (!class_exists(\Smalot\PdfParser\Parser::class)) {
                 throw new \RuntimeException(
                     'PDF ingestion requires: composer require smalot/pdfparser'
@@ -83,7 +96,12 @@ class ProjectFileController extends Controller
             return $parser->parseFile($fullPath)->getText();
         }
 
-        // TXT / MD
-        return file_get_contents($fullPath);
+        $text = file_get_contents($fullPath);
+
+        if ($text === false) {
+            throw new \RuntimeException('Could not read file contents.');
+        }
+
+        return $text;
     }
 }
