@@ -37,19 +37,25 @@ class RAGManager
         $provider  = config('ai.rag.chat_provider') ?? config('ai.default');
         $chatModel = config("ai.providers.{$provider}.model");
         $ai        = AI::provider($provider)->model($chatModel);
+
         if ($context) {
             $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
         }
+
         return $ai->chat([['role' => 'user', 'content' => $question]])->content;
     }
 
     public function search(string $query): array
     {
         $queryVector = $this->embed($query);
-        $dbQuery = DB::table(config('ai.rag.table'))->select(['content', 'source', 'embedding']);
+
+        $dbQuery = DB::table(config('ai.rag.table'))
+            ->select(['content', 'source', 'embedding']);
+
         if ($this->sourceFilter) {
             $dbQuery->where('source', $this->sourceFilter);
         }
+
         $results = $dbQuery->get()
             ->map(fn($row) => [
                 'content' => $row->content,
@@ -60,7 +66,9 @@ class RAGManager
             ->take(config('ai.rag.top_k', 3))
             ->values()
             ->toArray();
+
         $this->sourceFilter = null;
+
         return $results;
     }
 
@@ -68,6 +76,7 @@ class RAGManager
     {
         $target = $source ?? $this->sourceFilter;
         $this->sourceFilter = null;
+
         if ($target) {
             DB::table(config('ai.rag.table'))->where('source', $target)->delete();
         } else {
@@ -84,6 +93,7 @@ class RAGManager
             ->model($embedModel)
             ->embed($text)[0];
 
+        // Purge cached driver so next AI::provider() gets fresh instance with correct model
         app(\EasyAI\LaravelAI\AIManager::class)->forgetDrivers();
 
         return $vector;
@@ -92,8 +102,8 @@ class RAGManager
     private function chunk(string $text): array
     {
         $paragraphs = preg_split('/\n{2,}/', $text);
-        $chunks = [];
-        $current = '';
+        $chunks     = [];
+        $current    = '';
         foreach ($paragraphs as $para) {
             if (strlen($current . $para) > config('ai.rag.chunk_size', 2000) && $current) {
                 $chunks[] = trim($current);

@@ -93,13 +93,20 @@ Built on **Laravel's driver pattern** — same architecture as Mail, Cache, and 
 composer require muradbdinfo/laravelai
 ```
 
-**Step 2:** Publish config
+**Step 2:** Publish config and assets
 
 ```bash
 php artisan vendor:publish --tag=ai-config
+php artisan vendor:publish --tag=ai-chat-assets
 ```
 
-**Step 3:** Add to `.env`
+**Step 3:** Run migrations
+
+```bash
+php artisan migrate
+```
+
+**Step 4:** Add to `.env`
 
 ```env
 AI_PROVIDER=ollama
@@ -107,7 +114,7 @@ AI_OLLAMA_URL=http://127.0.0.1:11434
 AI_OLLAMA_MODEL=qwen2:1.5b
 ```
 
-> ✅ That's it! No `AppServiceProvider` changes needed — everything registers automatically.
+**Step 5:** Visit `/ai-chat` in your browser ✅
 
 ### Requirements
 
@@ -120,32 +127,25 @@ AI_OLLAMA_MODEL=qwen2:1.5b
 
 ## 🚀 Quick Start
 
-### 3-Line Example
-
 ```php
 use EasyAI\LaravelAI\Facades\AI;
 
 $response = AI::chat([['role' => 'user', 'content' => 'What is Laravel?']]);
-
 echo $response->content;
-// "Laravel is a PHP web application framework..."
 ```
 
 ### One-Liner Helper
 
 ```php
 $answer = ai('What is Laravel?');
-// Returns AI response as a plain string
 ```
 
 ### Test in Tinker
 
 ```bash
 php artisan tinker
-
 >>> AI::provider('ollama')->health()
 => true
-
 >>> ai('Say hello in 3 words')
 => "Hello there, friend!"
 ```
@@ -155,17 +155,6 @@ php artisan tinker
 ## 💬 Built-in Chat UI
 
 > **New in v1.3.0** — A full ChatGPT-like chat app included. Zero setup required.
-
-```bash
-# 1. Publish assets
-php artisan vendor:publish --tag=ai-chat-assets
-
-# 2. Run migrations
-php artisan migrate
-
-# 3. Open in browser
-# http://your-app.test/ai-chat
-```
 
 ### What you get out of the box
 
@@ -227,7 +216,7 @@ Create Project → Upload Files → Chat Inside Project → RAG answers from you
 - 🧠 **RAG ON** badge in chat header when inside a project session
 - 📎 **Manage Files** button — upload, view ingestion status, delete files
 - 🟢 Status per file: `pending` → `ingested` → `failed`
-- **Project context active** indicator in the input area footer
+- **Project context active** indicator in the input footer
 
 ### PDF support (optional)
 
@@ -235,18 +224,11 @@ Create Project → Upload Files → Chat Inside Project → RAG answers from you
 composer require smalot/pdfparser
 ```
 
-Without this, `.txt` and `.md` are supported. PDF ingestion requires this package.
-
 ### RAG Scoping API
 
 ```php
-// Search only one project's documents
 $results = AI::rag()->source('project_5')->search('your query');
-
-// Ask with project-scoped RAG
-$answer = AI::rag()->source('project_5')->ask('your question');
-
-// Delete all vectors for a specific project
+$answer  = AI::rag()->source('project_5')->ask('your question');
 AI::rag()->flush('project_5');
 ```
 
@@ -254,53 +236,45 @@ AI::rag()->flush('project_5');
 
 ## 🧠 RAG (Built-in)
 
-Store documents as embeddings, search by similarity, let AI answer from your own data. **No external vector database required** — uses your existing SQL database.
+No external vector database required — uses your existing SQL database.
 
 ### Setup
 
 ```bash
-# Pull embedding model
 ollama pull nomic-embed-text
-
-# Run migrations
 php artisan migrate
 ```
 
 ```env
 AI_RAG_PROVIDER=ollama
 AI_RAG_EMBED_MODEL=nomic-embed-text
-AI_RAG_CHAT_PROVIDER=ollama
 ```
 
 ### Usage
 
 ```php
-// Store a document
+// Store
 AI::rag()->ingest('Laravel is a PHP framework using MVC.', 'docs');
 
-// Ask a question (RAG-powered)
+// Ask
 $answer = AI::rag()->ask('What is Laravel?');
-// "Laravel is a PHP framework using MVC..."
 
-// Similarity search (returns chunks + scores)
+// Search
 $results = AI::rag()->search('MVC pattern');
 // [['content' => '...', 'source' => 'docs', 'score' => 0.91]]
 
-// Scoped to one source
+// Scoped
 $results = AI::rag()->source('project_5')->search('your query');
 
-// Flush all documents
+// Flush
 AI::rag()->flush();
-
-// Flush one source only
 AI::rag()->flush('project_5');
 ```
 
-### Ingest via Artisan
+### Artisan
 
 ```bash
 php artisan ai:rag:ingest storage/docs/manual.txt --source=manual
-php artisan ai:rag:ingest storage/docs/ --source=docs
 php artisan ai:rag:ingest storage/docs/ --flush
 ```
 
@@ -308,12 +282,11 @@ php artisan ai:rag:ingest storage/docs/ --flush
 
 | `.env` Key | Default | Description |
 |------------|---------|-------------|
-| `AI_RAG_PROVIDER` | `ollama` | Provider for generating embeddings |
+| `AI_RAG_PROVIDER` | `ollama` | Embedding provider |
 | `AI_RAG_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
-| `AI_RAG_CHAT_PROVIDER` | `null` (uses default) | Provider for `ask()` |
-| `AI_RAG_CHUNK_SIZE` | `2000` | Max characters per chunk |
+| `AI_RAG_CHUNK_SIZE` | `2000` | Max chars per chunk |
 | `AI_RAG_TOP_K` | `3` | Chunks retrieved per query |
-| `AI_RAG_TABLE` | `ai_documents` | Database table name |
+| `AI_RAG_TABLE` | `ai_documents` | Database table |
 
 ---
 
@@ -325,7 +298,16 @@ php artisan ai:rag:ingest storage/docs/ --flush
 AI_PROVIDER=ollama
 AI_OLLAMA_URL=http://127.0.0.1:11434
 AI_OLLAMA_MODEL=qwen2:1.5b
+AI_OLLAMA_TIMEOUT=120
 ```
+
+> **Note for small models (qwen2, qwen2.5):** If you get 400 errors with RAG context, set `num_ctx` to match your model's context window:
+> ```bash
+> ollama show qwen2:1.5b --modelfile > /tmp/modelfile
+> echo "PARAMETER num_ctx 2048" >> /tmp/modelfile
+> ollama create qwen2-fixed -f /tmp/modelfile
+> ```
+> Then use `AI_OLLAMA_MODEL=qwen2-fixed` in `.env`.
 
 ### OpenAI (ChatGPT)
 
@@ -368,9 +350,7 @@ $response = AI::provider('ollama')
 ```php
 AI::provider('ollama')->stream(
     [['role' => 'user', 'content' => 'Write a poem']],
-    function (string $chunk) {
-        echo $chunk;
-    }
+    function (string $chunk) { echo $chunk; }
 );
 ```
 
@@ -387,7 +367,7 @@ foreach (['ollama', 'deepseek', 'openai'] as $provider) {
 }
 ```
 
-### Token Estimation (offline)
+### Token Estimation
 
 ```php
 $tokens = AI::estimateTokens('Hello world');
@@ -397,12 +377,13 @@ $tokens = AI::estimateTokens($messagesArray);
 ### Ollama Advanced Features
 
 ```php
-AI::provider('ollama')->format('json')->chat($messages);        // JSON output
-AI::provider('ollama')->embed('Hello world');                   // Embeddings
-AI::provider('ollama')->keepAlive('10m')->chat($messages);      // Keep in memory
-AI::provider('ollama')->pullModel('llama3.1:8b');               // Download model
-AI::provider('ollama')->runningModels();                        // List loaded
-AI::provider('ollama')->deleteModel('old-model');               // Remove model
+AI::provider('ollama')->format('json')->chat($messages);
+AI::provider('ollama')->embed('Hello world');
+AI::provider('ollama')->keepAlive('10m')->chat($messages);
+AI::provider('ollama')->options(['num_ctx' => 2048])->chat($messages);
+AI::provider('ollama')->pullModel('llama3.1:8b');
+AI::provider('ollama')->runningModels();
+AI::provider('ollama')->deleteModel('old-model');
 ```
 
 ### Error Handling
@@ -464,7 +445,7 @@ try {
 | `->format('json')` | Force JSON output |
 | `->embed($text)` | Generate embedding |
 | `->keepAlive($duration)` | Keep in memory |
-| `->options($array)` | Raw Ollama options |
+| `->options($array)` | Raw Ollama options (e.g. `num_ctx`) |
 | `->pullModel($name)` | Download model |
 | `->showModel($name)` | Model details |
 | `->deleteModel($name)` | Remove model |
@@ -500,14 +481,12 @@ ai('Your question', 'anthropic', 'claude-haiku-...')
 // config/ai.php
 return [
     'default' => env('AI_PROVIDER', 'ollama'),
-
     'providers' => [
-        'ollama'    => ['driver' => 'ollama',    'url'     => env('AI_OLLAMA_URL'),    'model' => env('AI_OLLAMA_MODEL', 'qwen2:1.5b'), 'timeout' => 120],
-        'openai'    => ['driver' => 'openai',    'api_key' => env('AI_OPENAI_KEY'),    'model' => env('AI_OPENAI_MODEL', 'gpt-4o-mini'), 'timeout' => 60],
-        'anthropic' => ['driver' => 'anthropic', 'api_key' => env('AI_ANTHROPIC_KEY'), 'model' => env('AI_ANTHROPIC_MODEL'), 'timeout' => 60],
-        'deepseek'  => ['driver' => 'deepseek',  'api_key' => env('AI_DEEPSEEK_KEY'),  'model' => env('AI_DEEPSEEK_MODEL', 'deepseek-chat'), 'timeout' => 60],
+        'ollama'    => ['driver' => 'ollama',    'url'     => env('AI_OLLAMA_URL'),    'model' => env('AI_OLLAMA_MODEL', 'qwen2:1.5b'),      'timeout' => env('AI_OLLAMA_TIMEOUT', 120)],
+        'openai'    => ['driver' => 'openai',    'api_key' => env('AI_OPENAI_KEY'),    'model' => env('AI_OPENAI_MODEL', 'gpt-4o-mini'),      'timeout' => 60],
+        'anthropic' => ['driver' => 'anthropic', 'api_key' => env('AI_ANTHROPIC_KEY'), 'model' => env('AI_ANTHROPIC_MODEL'),                  'timeout' => 60],
+        'deepseek'  => ['driver' => 'deepseek',  'api_key' => env('AI_DEEPSEEK_KEY'),  'model' => env('AI_DEEPSEEK_MODEL', 'deepseek-chat'),  'timeout' => 60],
     ],
-
     'rag' => [
         'embed_provider' => env('AI_RAG_PROVIDER', 'ollama'),
         'embed_model'    => env('AI_RAG_EMBED_MODEL', 'nomic-embed-text'),
@@ -523,27 +502,35 @@ return [
 ### Complete `.env` Reference
 
 ```env
+# Provider
 AI_PROVIDER=ollama
 
+# Ollama (self-hosted, free)
 AI_OLLAMA_URL=http://127.0.0.1:11434
 AI_OLLAMA_MODEL=qwen2:1.5b
 AI_OLLAMA_TIMEOUT=120
 
+# OpenAI
 AI_OPENAI_KEY=sk-proj-xxxx
 AI_OPENAI_MODEL=gpt-4o-mini
 
+# Anthropic (Claude)
 AI_ANTHROPIC_KEY=sk-ant-xxxx
 AI_ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
+# DeepSeek
 AI_DEEPSEEK_KEY=sk-xxxx
 AI_DEEPSEEK_MODEL=deepseek-chat
 
+# RAG
 AI_RAG_PROVIDER=ollama
 AI_RAG_EMBED_MODEL=nomic-embed-text
-AI_RAG_CHAT_PROVIDER=ollama
-AI_RAG_CHUNK_SIZE=2000
-AI_RAG_TOP_K=3
+AI_RAG_CHUNK_SIZE=500
+AI_RAG_TOP_K=1
 AI_RAG_TABLE=ai_documents
+
+# RAG for small models — reduce chunk size and limit context
+# AI_OLLAMA_NUM_CTX=2048
 ```
 
 ---
@@ -565,10 +552,9 @@ Uses `Http::fake()` — no real API calls needed.
 |---------|---------|--------|
 | v1.0 | Ollama, OpenAI, Anthropic, DeepSeek | ✅ Released |
 | v1.1 | Laravel 12 & 13 support | ✅ Released |
-| v1.2 | Built-in RAG system | ✅ Released |
-| v1.2 | Ollama advanced features | ✅ Released |
+| v1.2 | Built-in RAG system + Ollama advanced | ✅ Released |
 | v1.3 | Built-in Chat UI | ✅ Released |
-| v1.4 | Projects + RAG scoping | ✅ Released |
+| v1.4 | Projects + RAG scoping (self-hosted Claude Projects) | ✅ Released |
 | v2.0 | Function / Tool calling | 🔜 Planned |
 | v2.0 | Vision / Image input | 🔜 Planned |
 | v2.1 | Groq driver | 🔜 Planned |
