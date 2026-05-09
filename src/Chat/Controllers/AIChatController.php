@@ -9,6 +9,7 @@ use EasyAI\LaravelAI\Facades\AI;
 use EasyAI\LaravelAI\Exceptions\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 
 class AIChatController extends Controller
 {
@@ -102,25 +103,31 @@ class AIChatController extends Controller
 
         $history = $session->fresh()->load('messages')->toAIMessages();
 
-        // RAG context injection for project sessions
+        // RAG context injection — only if project has ingested documents
         if ($session->project_id) {
-            try {
-                $context = AI::rag()
-                    ->source('project_' . $session->project_id)
-                    ->search($request->message);
+            $source     = 'project_' . $session->project_id;
+            $docCount   = DB::table(config('ai.rag.table', 'ai_documents'))
+                            ->where('source', $source)
+                            ->count();
 
-                if (!empty($context)) {
-                    $contextText = collect($context)->pluck('content')->join("\n\n---\n\n");
-                    array_unshift($history, [
-                        'role'    => 'system',
-                        'content' => config('ai.rag.system_prompt',
-                                        'Answer using ONLY the context below. If unsure, say so.')
-                                     . "\n\nCONTEXT:\n" . $contextText,
-                    ]);
+            if ($docCount > 0) {
+                try {
+                    $context = AI::rag()->source($source)->search($request->message);
+
+                    if (!empty($context)) {
+                        $contextText = collect($context)->pluck('content')->join("\n\n---\n\n");
+                        array_unshift($history, [
+                            'role'    => 'system',
+                            'content' => config('ai.rag.system_prompt',
+                                            'Answer using ONLY the context below. If unsure, say so.')
+                                         . "\n\nCONTEXT:\n" . $contextText,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    // RAG failure non-fatal — stream continues without context
                 }
-            } catch (\Throwable $e) {
-                // RAG failure is non-fatal
             }
+            // If docCount == 0: skip RAG entirely, chat normally
         }
 
         return response()->stream(function () use ($session, $history, $provider) {
