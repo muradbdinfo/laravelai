@@ -4,11 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Step 1 of 2 for Projects feature.
+ * Creates: projects, project_files
+ * Must run BEFORE 2026_08_06_000001 (which adds project_id to chat_sessions)
+ */
 return new class extends Migration
 {
     public function up(): void
     {
-        // ── Projects ────────────────────────────────────────────────────
         if (!Schema::hasTable('projects')) {
             Schema::create('projects', function (Blueprint $table) {
                 $table->id();
@@ -18,7 +22,6 @@ return new class extends Migration
             });
         }
 
-        // ── Project Files ────────────────────────────────────────────────
         if (!Schema::hasTable('project_files')) {
             Schema::create('project_files', function (Blueprint $table) {
                 $table->id();
@@ -30,24 +33,10 @@ return new class extends Migration
                 $table->timestamps();
             });
         }
-
-        // ── Add project_id to chat_sessions ──────────────────────────────
-        if (Schema::hasTable('chat_sessions') && !Schema::hasColumn('chat_sessions', 'project_id')) {
-            Schema::table('chat_sessions', function (Blueprint $table) {
-                $table->foreignId('project_id')->nullable()->after('title')
-                      ->constrained()->nullOnDelete();
-            });
-        }
     }
 
     public function down(): void
     {
-        if (Schema::hasTable('chat_sessions') && Schema::hasColumn('chat_sessions', 'project_id')) {
-            Schema::table('chat_sessions', function (Blueprint $table) {
-                $table->dropForeign(['project_id']);
-                $table->dropColumn('project_id');
-            });
-        }
         Schema::dropIfExists('project_files');
         Schema::dropIfExists('projects');
     }
