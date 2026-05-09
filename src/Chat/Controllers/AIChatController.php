@@ -4,6 +4,7 @@ namespace EasyAI\LaravelAI\Chat\Controllers;
 
 use EasyAI\LaravelAI\Chat\Models\ChatSession;
 use EasyAI\LaravelAI\Chat\Models\ChatMessage;
+use EasyAI\LaravelAI\Chat\Models\Project;
 use EasyAI\LaravelAI\Facades\AI;
 use EasyAI\LaravelAI\Exceptions\ConnectionException;
 use Illuminate\Http\Request;
@@ -26,12 +27,13 @@ class AIChatController extends Controller
 
     public function index(Request $request)
     {
-        $sessions      = ChatSession::latest()->get();
+        $sessions      = ChatSession::with('project')->latest()->get();
+        $projects      = Project::withCount('files')->latest()->get();
         $activeSession = null;
         $messages      = collect();
 
         if ($request->has('session')) {
-            $activeSession = ChatSession::with('messages')->find($request->session);
+            $activeSession = ChatSession::with('messages', 'project')->find($request->session);
             $messages      = $activeSession?->messages ?? collect();
         }
 
@@ -41,6 +43,7 @@ class AIChatController extends Controller
             'messages'       => $messages,
             'providers'      => self::PROVIDERS,
             'activeProvider' => $this->activeProvider(),
+            'projects'       => $projects,
         ]);
     }
 
@@ -51,15 +54,29 @@ class AIChatController extends Controller
         return response()->json(['provider' => $request->provider, 'ok' => true]);
     }
 
-    public function newSession()
+    public function newSession(Request $request)
     {
-        $session = ChatSession::create(['title' => 'New Chat']);
+        $projectId = $request->input('project_id');
+        $session   = ChatSession::create([
+            'title'      => 'New Chat',
+            'project_id' => $projectId ?: null,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['session' => $session]);
+        }
+
         return redirect()->route('ai-chat.index', ['session' => $session->id]);
     }
 
     public function deleteSession(ChatSession $session)
     {
         $session->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
         return redirect()->route('ai-chat.index');
     }
 
@@ -73,19 +90,38 @@ class AIChatController extends Controller
         $provider = $this->activeProvider();
         $session  = ChatSession::with('messages')->findOrFail($request->session_id);
 
-        // Save user message
         ChatMessage::create([
             'chat_session_id' => $session->id,
             'role'            => 'user',
             'content'         => $request->message,
         ]);
 
-        // Auto-title on first message
         if ($session->messages->count() === 0 && $session->title === 'New Chat') {
             $session->update(['title' => str($request->message)->limit(50)]);
         }
 
         $history = $session->fresh()->load('messages')->toAIMessages();
+
+        // RAG context injection for project sessions
+        if ($session->project_id) {
+            try {
+                $context = AI::rag()
+                    ->source('project_' . $session->project_id)
+                    ->search($request->message);
+
+                if (!empty($context)) {
+                    $contextText = collect($context)->pluck('content')->join("\n\n---\n\n");
+                    array_unshift($history, [
+                        'role'    => 'system',
+                        'content' => config('ai.rag.system_prompt',
+                                        'Answer using ONLY the context below. If unsure, say so.')
+                                     . "\n\nCONTEXT:\n" . $contextText,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // RAG failure is non-fatal
+            }
+        }
 
         return response()->stream(function () use ($session, $history, $provider) {
             $fullReply = '';

@@ -1,10 +1,23 @@
 <?php
 namespace EasyAI\LaravelAI\RAG;
+
 use EasyAI\LaravelAI\Facades\AI;
 use Illuminate\Support\Facades\DB;
 
 class RAGManager
 {
+    protected ?string $sourceFilter = null;
+
+    /**
+     * Scope all subsequent search/ask/flush calls to a specific source.
+     * Usage: AI::rag()->source('project_5')->search($query)
+     */
+    public function source(string $source): static
+    {
+        $this->sourceFilter = $source;
+        return $this;
+    }
+
     public function ingest(string $content, string $source = ''): int
     {
         $count = 0;
@@ -22,28 +35,33 @@ class RAGManager
         return $count;
     }
 
-public function ask(string $question): string
-{
-    $context  = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
-    $provider = config('ai.rag.chat_provider') ?? config('ai.default');
+    public function ask(string $question): string
+    {
+        $context  = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
+        $provider = config('ai.rag.chat_provider') ?? config('ai.default');
+        $chatModel = config("ai.providers.{$provider}.model");
+        $ai = AI::provider($provider)->model($chatModel);
 
-    // Explicitly set chat model to avoid embed model bleeding over
-    $chatModel = config("ai.providers.{$provider}.model");
+        if ($context) {
+            $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
+        }
 
-    $ai = AI::provider($provider)->model($chatModel);
-
-    if ($context) {
-        $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
+        return $ai->chat([['role' => 'user', 'content' => $question]])->content;
     }
-
-    return $ai->chat([['role' => 'user', 'content' => $question]])->content;
-}
 
     public function search(string $query): array
     {
         $queryVector = $this->embed($query);
-        return DB::table(config('ai.rag.table'))
-            ->get(['content', 'source', 'embedding'])
+
+        $dbQuery = DB::table(config('ai.rag.table'))
+            ->select(['content', 'source', 'embedding']);
+
+        // Apply source filter if set
+        if ($this->sourceFilter) {
+            $dbQuery->where('source', $this->sourceFilter);
+        }
+
+        $results = $dbQuery->get()
             ->map(fn($row) => [
                 'content' => $row->content,
                 'source'  => $row->source,
@@ -53,11 +71,29 @@ public function ask(string $question): string
             ->take(config('ai.rag.top_k', 3))
             ->values()
             ->toArray();
+
+        // Reset filter after use so it doesn't bleed into next call
+        $this->sourceFilter = null;
+
+        return $results;
     }
 
-    public function flush(): void
+    /**
+     * Flush all documents, or only a specific source.
+     * AI::rag()->flush()              — truncates entire table
+     * AI::rag()->flush('project_5')   — deletes only project_5 docs
+     * AI::rag()->source('project_5')->flush() — same via chaining
+     */
+    public function flush(?string $source = null): void
     {
-        DB::table(config('ai.rag.table'))->truncate();
+        $target = $source ?? $this->sourceFilter;
+        $this->sourceFilter = null;
+
+        if ($target) {
+            DB::table(config('ai.rag.table'))->where('source', $target)->delete();
+        } else {
+            DB::table(config('ai.rag.table'))->truncate();
+        }
     }
 
     private function embed(string $text): array
@@ -70,8 +106,8 @@ public function ask(string $question): string
     private function chunk(string $text): array
     {
         $paragraphs = preg_split('/\n{2,}/', $text);
-        $chunks  = [];
-        $current = '';
+        $chunks     = [];
+        $current    = '';
         foreach ($paragraphs as $para) {
             if (strlen($current . $para) > config('ai.rag.chunk_size', 2000) && $current) {
                 $chunks[] = trim($current);
@@ -81,14 +117,19 @@ public function ask(string $question): string
             }
         }
         if (trim($current)) $chunks[] = trim($current);
-        return $chunks ?: [$text];
+        return $chunks ?: [trim($text)];
     }
 
     private function cosine(array $a, array $b): float
     {
-        $dot  = array_sum(array_map(fn($x, $y) => $x * $y, $a, $b));
-        $magA = sqrt(array_sum(array_map(fn($x) => $x * $x, $a)));
-        $magB = sqrt(array_sum(array_map(fn($x) => $x * $x, $b)));
-        return ($magA && $magB) ? $dot / ($magA * $magB) : 0.0;
+        if (empty($a) || empty($b) || count($a) !== count($b)) return 0.0;
+        $dot = $normA = $normB = 0.0;
+        foreach ($a as $i => $val) {
+            $dot   += $val * $b[$i];
+            $normA += $val * $val;
+            $normB += $b[$i] * $b[$i];
+        }
+        $denom = sqrt($normA) * sqrt($normB);
+        return $denom > 0 ? $dot / $denom : 0.0;
     }
 }
