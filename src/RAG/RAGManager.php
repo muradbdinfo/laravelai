@@ -8,10 +8,6 @@ class RAGManager
 {
     protected ?string $sourceFilter = null;
 
-    /**
-     * Scope all subsequent search/ask/flush calls to a specific source.
-     * Usage: AI::rag()->source('project_5')->search($query)
-     */
     public function source(string $source): static
     {
         $this->sourceFilter = $source;
@@ -37,30 +33,23 @@ class RAGManager
 
     public function ask(string $question): string
     {
-        $context  = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
-        $provider = config('ai.rag.chat_provider') ?? config('ai.default');
+        $context   = collect($this->search($question))->pluck('content')->join("\n\n---\n\n");
+        $provider  = config('ai.rag.chat_provider') ?? config('ai.default');
         $chatModel = config("ai.providers.{$provider}.model");
-        $ai = AI::provider($provider)->model($chatModel);
-
+        $ai        = AI::provider($provider)->model($chatModel);
         if ($context) {
             $ai->systemPrompt(config('ai.rag.system_prompt') . "\n\nCONTEXT:\n" . $context);
         }
-
         return $ai->chat([['role' => 'user', 'content' => $question]])->content;
     }
 
     public function search(string $query): array
     {
         $queryVector = $this->embed($query);
-
-        $dbQuery = DB::table(config('ai.rag.table'))
-            ->select(['content', 'source', 'embedding']);
-
-        // Apply source filter if set
+        $dbQuery = DB::table(config('ai.rag.table'))->select(['content', 'source', 'embedding']);
         if ($this->sourceFilter) {
             $dbQuery->where('source', $this->sourceFilter);
         }
-
         $results = $dbQuery->get()
             ->map(fn($row) => [
                 'content' => $row->content,
@@ -71,24 +60,14 @@ class RAGManager
             ->take(config('ai.rag.top_k', 3))
             ->values()
             ->toArray();
-
-        // Reset filter after use so it doesn't bleed into next call
         $this->sourceFilter = null;
-
         return $results;
     }
 
-    /**
-     * Flush all documents, or only a specific source.
-     * AI::rag()->flush()              — truncates entire table
-     * AI::rag()->flush('project_5')   — deletes only project_5 docs
-     * AI::rag()->source('project_5')->flush() — same via chaining
-     */
     public function flush(?string $source = null): void
     {
         $target = $source ?? $this->sourceFilter;
         $this->sourceFilter = null;
-
         if ($target) {
             DB::table(config('ai.rag.table'))->where('source', $target)->delete();
         } else {
@@ -98,16 +77,23 @@ class RAGManager
 
     private function embed(string $text): array
     {
-        return AI::provider(config('ai.rag.embed_provider', 'ollama'))
-            ->model(config('ai.rag.embed_model', 'nomic-embed-text'))
+        $embedProvider = config('ai.rag.embed_provider', 'ollama');
+        $embedModel    = config('ai.rag.embed_model', 'nomic-embed-text');
+
+        $vector = AI::provider($embedProvider)
+            ->model($embedModel)
             ->embed($text)[0];
+
+        app(\EasyAI\LaravelAI\AIManager::class)->forgetDrivers();
+
+        return $vector;
     }
 
     private function chunk(string $text): array
     {
         $paragraphs = preg_split('/\n{2,}/', $text);
-        $chunks     = [];
-        $current    = '';
+        $chunks = [];
+        $current = '';
         foreach ($paragraphs as $para) {
             if (strlen($current . $para) > config('ai.rag.chunk_size', 2000) && $current) {
                 $chunks[] = trim($current);

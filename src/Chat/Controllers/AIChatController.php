@@ -173,7 +173,7 @@ class AIChatController extends Controller
                             function (string $chunk) use (&$fullReply) {
                                 $fullReply .= $chunk;
                                 echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
-                                ob_flush();
+                                if (ob_get_level() > 0) { ob_flush(); }
                                 flush();
                             }
                         );
@@ -185,7 +185,7 @@ class AIChatController extends Controller
                             function (string $chunk) use (&$fullReply) {
                                 $fullReply .= $chunk;
                                 echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
-                                ob_flush();
+                                if (ob_get_level() > 0) { ob_flush(); }
                                 flush();
                             }
                         );
@@ -193,7 +193,7 @@ class AIChatController extends Controller
 
             } catch (ConnectionException $e) {
                 $msg = $provider === 'ollama'
-                    ? 'Ollama not running. Start with: ollama serve'
+                    ? 'Connection error: ' . $e->getMessage()
                     : ucfirst($provider) . ' connection failed. Check your API key in .env';
                 echo "data: " . json_encode(['error' => $msg]) . "\n\n";
             } catch (\Exception $e) {
@@ -209,7 +209,7 @@ class AIChatController extends Controller
             }
 
             echo "data: [DONE]\n\n";
-            ob_flush();
+            if (ob_get_level() > 0) { ob_flush(); }
             flush();
         }, 200, [
             'Content-Type'      => 'text/event-stream',
