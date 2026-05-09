@@ -581,8 +581,8 @@ Uses `Http::fake()` — no real API calls needed.
 ## ❤️ Support
 
 <p align="center">
-  <a href="https://buymeacoffee.com/muradbdinfo">
-    <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee">
+  <a href="https://easyit.com.bd/donate">
+    <img src="https://img.shields.io/badge/Donate-Support%20This%20Project-blue?style=for-the-badge&logo=heart&logoColor=white" alt="Donate">
   </a>
   &nbsp;
   <a href="https://github.com/sponsors/muradbdinfo">
